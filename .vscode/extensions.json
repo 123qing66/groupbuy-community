@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "vscjava.vscode-java-pack",
+    "vmware.vscode-spring-boot",
+    "GitHub.vscode-pull-request-github",
+    "eamodio.gitlens",
+    "humao.rest-client",
+    "redhat.vscode-xml",
+    "rittwick.developer-toolkit"
+  ]
+}
