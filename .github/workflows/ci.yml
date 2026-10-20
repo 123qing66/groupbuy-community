@@ -46,6 +46,8 @@ jobs:
 
       - name: Build and test
         env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           DB_PASSWORD: root
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: mvn -B clean package
