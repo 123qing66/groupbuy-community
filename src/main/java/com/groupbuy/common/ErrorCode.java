@@ -33,6 +33,11 @@ public enum ErrorCode {
     PICKUP_CODE_INVALID(10009, "核销码无效"),
     PICKUP_CODE_USED(10010, "核销码已使用"),
     REFUND_FAILED(10011, "退款失败"),
+    USER_ALREADY_EXISTS(10012, "用户名已存在"),
+    BAD_CREDENTIALS(10013, "用户名或密码错误"),
+    ACTIVITY_STATUS_INVALID(10014, "活动状态流转非法"),
+    ORDER_ALREADY_EXISTS(10015, "订单已存在，请勿重复下单"),
+    POINT_ALREADY_BOUND(10016, "该自提点已被其他团长绑定"),
     ;
 
     private final int code;
