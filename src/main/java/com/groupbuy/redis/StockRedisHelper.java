@@ -1,5 +1,6 @@
 package com.groupbuy.redis;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -31,21 +32,13 @@ public class StockRedisHelper {
     private final DefaultRedisScript<Long> deductScript = new DefaultRedisScript<>();
     private final DefaultRedisScript<Long> rollbackScript = new DefaultRedisScript<>();
 
-    /** 延迟加载脚本，避免 Bean 初始化时读不到资源 */
-    private DefaultRedisScript<Long> deductScript() {
-        if (deductScript.getScriptSource() == null) {
-            deductScript.setLocation(new ClassPathResource("lua/stock_deduct.lua"));
-            deductScript.setResultType(Long.class);
-        }
-        return deductScript;
-    }
-
-    private DefaultRedisScript<Long> rollbackScript() {
-        if (rollbackScript.getScriptSource() == null) {
-            rollbackScript.setLocation(new ClassPathResource("lua/stock_rollback.lua"));
-            rollbackScript.setResultType(Long.class);
-        }
-        return rollbackScript;
+    /** 初始化时把 Lua 脚本位置和返回类型绑定好 */
+    @PostConstruct
+    public void init() {
+        deductScript.setLocation(new ClassPathResource("lua/stock_deduct.lua"));
+        deductScript.setResultType(Long.class);
+        rollbackScript.setLocation(new ClassPathResource("lua/stock_rollback.lua"));
+        rollbackScript.setResultType(Long.class);
     }
 
     public static String stockKey(Long activityId) {
@@ -65,7 +58,7 @@ public class StockRedisHelper {
      */
     public long deduct(Long activityId, int num) {
         Long r = stringRedisTemplate.execute(
-                deductScript(),
+                deductScript,
                 Collections.singletonList(stockKey(activityId)),
                 String.valueOf(num));
         long result = r == null ? -1 : r;
@@ -80,7 +73,7 @@ public class StockRedisHelper {
     /** 回滚预扣 */
     public long rollback(Long activityId, int num) {
         Long r = stringRedisTemplate.execute(
-                rollbackScript(),
+                rollbackScript,
                 Collections.singletonList(stockKey(activityId)),
                 String.valueOf(num));
         return r == null ? 0 : r;

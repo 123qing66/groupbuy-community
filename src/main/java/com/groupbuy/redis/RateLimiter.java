@@ -1,5 +1,6 @@
 package com.groupbuy.redis;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -30,12 +31,11 @@ public class RateLimiter {
 
     private final DefaultRedisScript<Long> limitScript = new DefaultRedisScript<>();
 
-    private DefaultRedisScript<Long> script() {
-        if (limitScript.getScriptSource() == null) {
-            limitScript.setLocation(new ClassPathResource("lua/rate_limit.lua"));
-            limitScript.setResultType(Long.class);
-        }
-        return limitScript;
+    /** 初始化时把 Lua 脚本位置和返回类型绑定好 */
+    @PostConstruct
+    public void init() {
+        limitScript.setLocation(new ClassPathResource("lua/rate_limit.lua"));
+        limitScript.setResultType(Long.class);
     }
 
     /**
@@ -46,7 +46,7 @@ public class RateLimiter {
      */
     public boolean tryAcquire(String bizKey, int capacity, int rate) {
         Long r = stringRedisTemplate.execute(
-                script(),
+                limitScript,
                 Collections.singletonList(RL_KEY + bizKey),
                 String.valueOf(capacity),
                 String.valueOf(rate),

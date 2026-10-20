@@ -1,5 +1,6 @@
 package com.groupbuy.redis;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -29,12 +30,11 @@ public class RedisLock {
 
     private final DefaultRedisScript<Long> releaseScript = new DefaultRedisScript<>();
 
-    private DefaultRedisScript<Long> script() {
-        if (releaseScript.getScriptSource() == null) {
-            releaseScript.setLocation(new ClassPathResource("lua/lock_release.lua"));
-            releaseScript.setResultType(Long.class);
-        }
-        return releaseScript;
+    /** 初始化时把 Lua 脚本位置和返回类型绑定好 */
+    @PostConstruct
+    public void init() {
+        releaseScript.setLocation(new ClassPathResource("lua/lock_release.lua"));
+        releaseScript.setResultType(Long.class);
     }
 
     /** 加锁，返回是否成功 */
@@ -56,7 +56,7 @@ public class RedisLock {
             return;
         }
         try {
-            stringRedisTemplate.execute(script(),
+            stringRedisTemplate.execute(releaseScript,
                     Collections.singletonList(LOCK_PREFIX + bizKey), value);
         } finally {
             HOLDER.remove();
