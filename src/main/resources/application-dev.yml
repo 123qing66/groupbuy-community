@@ -14,8 +14,9 @@ spring:
 
   data:
     redis:
-      host: 127.0.0.1
-      port: 6379
+      # 本地默认 6379；Docker Compose 里由 REDIS_HOST=redis / REDIS_PORT=6379 覆盖
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
       database: 0
       timeout: 3s
       lettuce:

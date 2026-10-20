@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.GoodsMapper">
+
+    <sql id="Base_Column_List">
+        id, activity_id, name, cover, origin_price, group_price, status, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="com.groupbuy.entity.Goods"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO goods (activity_id, name, cover, origin_price, group_price, status)
+        VALUES (#{activityId}, #{name}, #{cover}, #{originPrice}, #{groupPrice}, 1)
+    </insert>
+
+    <insert id="insertBatch" parameterType="java.util.List"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO goods (activity_id, name, cover, origin_price, group_price, status)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.activityId}, #{item.name}, #{item.cover},
+             #{item.originPrice}, #{item.groupPrice}, 1)
+        </foreach>
+    </insert>
+
+    <select id="selectByActivityId" resultType="com.groupbuy.entity.Goods">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM goods
+        WHERE activity_id = #{activityId}
+          AND status = 1
+        ORDER BY id
+    </select>
+
+</mapper>

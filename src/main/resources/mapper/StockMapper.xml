@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.StockMapper">
+
+    <sql id="Base_Column_List">
+        id, goods_id, total, available, locked, version, update_time
+    </sql>
+
+    <insert id="init">
+        INSERT INTO stock (goods_id, total, available, locked, version)
+        VALUES (#{goodsId}, #{total}, #{total}, 0, 0)
+    </insert>
+
+    <select id="selectByGoodsId" resultType="com.groupbuy.entity.Stock">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM stock
+        WHERE goods_id = #{goodsId}
+    </select>
+
+    <!--
+      DB CAS 兜底（B 在下单接口 #16 调用）：
+      WHERE 里的 available >= #{num} 是原子判断，并发下也不会把库存扣成负数。
+      返回影响行数：1 = 扣减成功，0 = 库存不足。
+    -->
+    <update id="casDeduct">
+        UPDATE stock
+        SET available   = available - #{num},
+            locked      = locked + #{num},
+            version     = version + 1,
+            update_time = NOW()
+        WHERE goods_id = #{goodsId}
+          AND available >= #{num}
+    </update>
+
+    <!-- 回滚：把预扣的库存还回可用池 -->
+    <update id="casRollback">
+        UPDATE stock
+        SET available   = available + #{num},
+            locked      = locked - #{num},
+            version     = version + 1,
+            update_time = NOW()
+        WHERE goods_id = #{goodsId}
+          AND locked >= #{num}
+    </update>
+
+</mapper>

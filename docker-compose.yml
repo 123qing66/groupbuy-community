@@ -1,0 +1,61 @@
+# 一键启动（进阶项 Issue #33，A 负责）
+#
+# 用法：docker compose up -d
+#   MySQL  : 127.0.0.1:3307（避让本机已占用的 3306）
+#   Redis  : 127.0.0.1:6380（避让本机已占用的 6379）
+#   应用   : http://localhost:8080/doc.html
+#
+# 演示前嫌慢可以先只起中间件：docker compose up -d mysql redis
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: groupbuy-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: groupbuy
+      TZ: Asia/Shanghai
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./src/main/resources/db/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.0
+    container_name: groupbuy-redis
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # 应用本体：需要先把 jar 打出来（mvn clean package）
+  app:
+    build: .
+    container_name: groupbuy-app
+    ports:
+      - "8080:8080"
+    environment:
+      # 沿用 dev 配置，只是把 MySQL / Redis 的地址换成 compose 里的服务名
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_PASSWORD: root
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

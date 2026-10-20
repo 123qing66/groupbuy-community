@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  活动 Mapper（A 负责）
+  考核点：列表查询里的动态 SQL —— keyword / status / leaderId / pointId 四个 <if> 分支，
+          以及 ORDER BY 与分页 LIMIT，满足"≥3 处动态 SQL"的要求。
+-->
+<mapper namespace="com.groupbuy.mapper.ActivityMapper">
+
+    <sql id="Base_Column_List">
+        id, title, leader_id, point_id, target_num, current_num, buy_limit,
+        status, start_time, end_time, version, create_time, update_time
+    </sql>
+
+    <!-- 动态条件：四个可空条件，全部命中索引 idx_status_start / idx_leader_status -->
+    <sql id="Where_Clause">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND title LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="leaderId != null">
+                AND leader_id = #{leaderId}
+            </if>
+            <if test="pointId != null">
+                AND point_id = #{pointId}
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" parameterType="com.groupbuy.entity.Activity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO activity
+        (title, leader_id, point_id, target_num, current_num, buy_limit,
+         status, start_time, end_time, version)
+        VALUES
+        (#{title}, #{leaderId}, #{pointId}, #{targetNum}, 0, #{buyLimit},
+         0, #{startTime}, #{endTime}, 0)
+    </insert>
+
+    <select id="selectById" resultType="com.groupbuy.entity.Activity">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM activity
+        WHERE id = #{id}
+    </select>
+
+    <!-- 分页列表：offset/size 由 ActivityQuery 统一算好，避免各人各写一套 -->
+    <select id="selectList" resultType="com.groupbuy.entity.Activity">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM activity
+        <include refid="Where_Clause"/>
+        ORDER BY start_time DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countList" resultType="long">
+        SELECT COUNT(*) FROM activity
+        <include refid="Where_Clause"/>
+    </select>
+
+    <!-- 乐观锁更新：WHERE 带 version，影响行数 0 说明被别人抢先改了 -->
+    <update id="updateStatus">
+        UPDATE activity
+        SET status     = #{status},
+            version    = version + 1,
+            update_time = NOW()
+        WHERE id = #{id}
+          AND version = #{version}
+    </update>
+
+    <update id="incrCurrentNum">
+        UPDATE activity
+        SET current_num = current_num + #{num},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.PickupPointMapper">
+
+    <sql id="Base_Column_List">
+        id, name, address, contact, phone, status, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="com.groupbuy.entity.PickupPoint"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pickup_point (name, address, contact, phone, status)
+        VALUES (#{name}, #{address}, #{contact}, #{phone}, #{status})
+    </insert>
+
+    <update id="update" parameterType="com.groupbuy.entity.PickupPoint">
+        UPDATE pickup_point
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="contact != null">contact = #{contact},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="status != null">status = #{status},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="com.groupbuy.entity.PickupPoint">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM pickup_point
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectList" resultType="com.groupbuy.entity.PickupPoint">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM pickup_point
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY name
+    </select>
+
+    <update id="disable">
+        UPDATE pickup_point SET status = 0, update_time = NOW() WHERE id = #{id}
+    </update>
+
+</mapper>
