@@ -1,0 +1,60 @@
+# Maven 构建产物
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# 编译产物
+*.class
+*.log
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# 本地环境与密钥（严禁入库）
+.env
+*.env
+application-local.yml
+application-local.properties
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# IntelliJ / Eclipse（若有人用其它 IDE）
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.swp
+
+# 本地上传与临时文件
+uploads/
+tmp/
+
+# 压测与演示产物（需要入档的放 docs/evidence/）
+*.jtl
+*.jmx
+!docs/evidence/*
+
+# 视频原始素材：四人各自录的片段不入库，通过网盘/群传给 C 合成
+# 合成后的成片放 docs/evidence/ 也需下面这条放行
+*.mp4
+*.mov
+*.mkv
+*.avi
+!docs/evidence/*.mp4
+
+# 录屏与剪辑软件的工程文件
+*.osp
+*.fcprjo
+CapCut/
+JianyingPro/
