@@ -1,0 +1,59 @@
+# CODEOWNERS —— 代码归属声明，PR 会自动指派对应负责人评审
+# 复制到仓库的 .github/CODEOWNERS，并替换为四位成员的真实 GitHub 用户名
+
+# 默认负责人：组长（成员 A）
+*                                  @leader-github-@123qing66
+
+# 公共与基础设施：成员 A
+/src/main/java/**/common/           @leader-github-@123qing66
+/src/main/java/**/config/           @leader-github-@123qing66
+/src/main/resources/lua/            @leader-github-@123qing66
+/src/main/resources/db/schema.sql   @leader-github-@123qing66
+/src/main/resources/application*    @leader-github-@123qing66
+/docs/api.md                        @leader-github-@123qing66
+/.github/                           @leader-github-@123qing66
+/docker-compose.yml                 @leader-github-@123qing66
+/pom.xml                            @leader-github-@123qing66
+
+# 代码块① 活动管理 + 自提点（商品 + 活动 + 状态机 + 活动缓存 + 自提点/绑定/核销码生成）：成员 A
+/src/main/java/**/activity/         @leader-github-@123qing66
+/src/main/java/**/goods/            @leader-github-@123qing66
+/src/main/java/**/pickuppoint/      @leader-github-@123qing66
+/src/main/resources/mapper/activity/ @leader-github-@123qing66
+
+# 代码块② 下单抢购（B 的核心并发代码，混在 order 包下按文件归属）
+# B 的下单相关文件以 OrderCreate/Seckill 命名，PR 仍需 B 评审（配合下面默认负责人 + 手动 Reviewer）
+
+# 代码块③ 交易后段（支付 + 成团 + 核销 + 退款）：成员 C
+/src/main/java/**/order/            @member-c-github-id
+/src/main/java/**/pickup/           @member-c-github-id
+/src/main/java/**/task/             @member-c-github-id
+/src/main/resources/mapper/order/   @member-c-github-id
+
+# 文档产出：报告正文 1—5 章由 B 一人撰写，全部归 B
+# 第 6 章 AI 说明段与第 7 章个人小结由各人亲写，按人锁定（谁的小结谁负责）
+/docs/report/                     @member-b-github-id
+/docs/report/06-*A.md             @leader-github-id
+/docs/report/07-*A.md             @leader-github-id
+/docs/report/06-*B.md             @member-b-github-id
+/docs/report/07-*B.md             @member-b-github-id
+/docs/report/06-*C.md             @member-c-github-id
+/docs/report/07-*C.md             @member-c-github-id
+/docs/report/06-*D.md             @member-d-github-id
+/docs/report/07-*D.md             @member-d-github-id
+
+# 设计图（架构/ER/时序图，供 B 写报告引用）：A 画
+/docs/design/                     @leader-github-id
+
+# 视频脚本（片段 mp4 不入库，脚本入库留证）
+/docs/video/                        @member-c-github-id
+
+# 代码块③ 认证鉴权 + 后台统计 + 接口文档：成员 D
+/src/main/java/**/auth/             @member-d-github-id
+/src/main/java/**/user/             @member-d-github-id
+/src/main/java/**/admin/            @member-d-github-id
+/src/main/resources/mapper/admin/   @member-d-github-id
+/src/main/resources/db/data.sql     @member-d-github-id
+/docs/http/                         @member-d-github-id
+/docs/evidence/                     @member-d-github-id
+/src/test/                          @member-d-github-id
