@@ -37,7 +37,7 @@ public enum ErrorCode {
     BAD_CREDENTIALS(10013, "用户名或密码错误"),
     ACTIVITY_STATUS_INVALID(10014, "活动状态流转非法"),
     ORDER_ALREADY_EXISTS(10015, "订单已存在，请勿重复下单"),
-    POINT_ALREADY_BOUND(10016, "该自提点已被其他团长绑定"),
+    POINT_ALREADY_BOUND(10016, "自提点归属校验失败（未绑定该自提点或已被其他团长绑定）"),
     ;
 
     private final int code;

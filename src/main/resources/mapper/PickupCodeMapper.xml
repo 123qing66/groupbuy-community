@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.PickupCodeMapper">
+
+    <sql id="Base_Column_List">
+        id, code, order_id, order_no, user_id, point_id, status, verify_time, verifier_id, create_time
+    </sql>
+
+    <insert id="insert" parameterType="com.groupbuy.entity.PickupCode"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pickup_code (code, order_id, order_no, user_id, point_id, status)
+        VALUES (#{code}, #{orderId}, #{orderNo}, #{userId}, #{pointId}, 0)
+    </insert>
+
+    <!--
+      批量生成（成团时调用）。
+      uk_order_id 保证一单一码：重复调用会撞唯一键，由调用方捕获后跳过即可。
+    -->
+    <insert id="insertBatch" parameterType="java.util.List"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pickup_code (code, order_id, order_no, user_id, point_id, status)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.code}, #{item.orderId}, #{item.orderNo},
+             #{item.userId}, #{item.pointId}, 0)
+        </foreach>
+    </insert>
+
+    <select id="selectByCode" resultType="com.groupbuy.entity.PickupCode">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM pickup_code WHERE code = #{code}
+    </select>
+
+    <select id="selectByOrderId" resultType="com.groupbuy.entity.PickupCode">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM pickup_code WHERE order_id = #{orderId}
+    </select>
+
+    <select id="selectByPoint" resultType="com.groupbuy.entity.PickupCode">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM pickup_code
+        WHERE point_id = #{pointId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY id
+    </select>
+
+</mapper>
