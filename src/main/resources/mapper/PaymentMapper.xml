@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.PaymentMapper">
+
+    <sql id="Base_Column_List">
+        id, pay_no, order_no, trade_no, amount, channel, status, sign,
+        callback_time, create_time
+    </sql>
+
+    <!--
+      幂等核心：uk_trade_no 唯一索引。
+      同一个 trade_no 第二次插入会抛 DuplicateKeyException，调用方捕获后做幂等（返回首次结果）。
+    -->
+    <insert id="insert" parameterType="com.groupbuy.entity.Payment"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payment (pay_no, order_no, trade_no, amount, channel, status, sign, callback_time)
+        VALUES (#{payNo}, #{orderNo}, #{tradeNo}, #{amount}, #{channel}, #{status}, #{sign}, #{callbackTime})
+    </insert>
+
+    <select id="selectByTradeNo" resultType="com.groupbuy.entity.Payment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM payment WHERE trade_no = #{tradeNo}
+    </select>
+
+    <select id="selectByOrderNo" resultType="com.groupbuy.entity.Payment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM payment WHERE order_no = #{orderNo}
+    </select>
+
+</mapper>
