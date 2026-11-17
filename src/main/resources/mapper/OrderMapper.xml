@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.OrderMapper">
+
+    <sql id="Base_Column_List">
+        id, order_no, user_id, activity_id, goods_id, num, pay_amount, status,
+        expire_time, pay_time, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultType="com.groupbuy.entity.Order">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM order_info WHERE id = #{id}
+    </select>
+
+    <select id="selectByOrderNo" resultType="com.groupbuy.entity.Order">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM order_info WHERE order_no = #{orderNo}
+    </select>
+
+    <!--
+      CAS 状态流转：WHERE status = fromStatus 保证并发下只有一次成功。
+      影响行数 = 0 → 订单已被并发改成别的状态，调用方据此做幂等（不改数据）。
+    -->
+    <update id="updateStatus">
+        UPDATE order_info
+        SET status = #{toStatus}
+        WHERE order_no = #{orderNo} AND status = #{fromStatus}
+    </update>
+
+    <!-- 支付成功：0 → 1，同时写支付时间（一条 SQL 原子完成） -->
+    <update id="markPaid">
+        UPDATE order_info
+        SET status = 1, pay_time = NOW()
+        WHERE order_no = #{orderNo} AND status = 0
+    </update>
+
+</mapper>
