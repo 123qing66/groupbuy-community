@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  下单专用 Mapper（B 负责）
+  只操作 order_info 表，不碰 payment / pickup_code / refund（那是 C 的）。
+-->
+<mapper namespace="com.groupbuy.mapper.OrderCreateMapper">
+
+    <insert id="insertOrder" parameterType="com.groupbuy.entity.OrderCreateOrder"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_info
+        (order_no, user_id, activity_id, goods_id, num, pay_amount, status, expire_time)
+        VALUES
+        (#{orderNo}, #{userId}, #{activityId}, #{goodsId}, #{num},
+         #{payAmount}, #{status}, #{expireTime})
+    </insert>
+
+    <!--
+      幂等/限购回查：走 uk_user_activity 唯一索引。
+      本来直接 INSERT 撞唯一键就能判重，但幂等命中时要返回首次订单，所以留这条查询。
+    -->
+    <select id="selectByUserAndActivity" resultType="com.groupbuy.entity.OrderCreateOrder">
+        SELECT id, order_no, user_id, activity_id, goods_id, num,
+               pay_amount, status, expire_time, pay_time, create_time, update_time
+        FROM order_info
+        WHERE user_id = #{userId}
+          AND activity_id = #{activityId}
+        LIMIT 1
+    </select>
+
+</mapper>
