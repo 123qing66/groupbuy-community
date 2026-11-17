@@ -1,0 +1,117 @@
+@host  = http://localhost:8080
+@token = {{loginAdmin.response.body.$.data.token}}
+
+###
+### ① 先发这条登录（管理员）拿 token，新增/修改/停用/绑定都要用
+### ============================================================
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin1",
+  "password": "897393"
+}
+
+###
+### ============================================================
+### #11 自提点列表 — 只查启用项（status=1），游客也能看
+### 响应 data：{ total, pages, list[] } 或直接数组，见 PickupPointVO
+### ============================================================
+GET {{host}}/api/pickup-points?status=1
+
+###
+### #11 自提点列表 — 关键词模糊匹配名称
+### ============================================================
+GET {{host}}/api/pickup-points?keyword=阳光
+
+###
+### #11 自提点详情
+### ============================================================
+GET {{host}}/api/pickup-points/1
+
+###
+### ============================================================
+### #11 新增自提点（需 ROLE_ADMIN）
+### 成功：data = { id, name, status }
+### ============================================================
+POST {{host}}/api/pickup-points
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "http示例自提点",
+  "address": "示例路 1 号",
+  "contact": "王团长",
+  "phone": "13900139000"
+}
+
+###
+### #11 修改自提点（需 ROLE_ADMIN）
+### 只传要改的字段；不传的字段保持原值
+### ============================================================
+PUT {{host}}/api/pickup-points/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "阳光小区自提点（改名测试）",
+  "address": "示例路 2 号",
+  "contact": "王团长",
+  "phone": "13900139001"
+}
+
+###
+### #11 停用自提点（逻辑删除：status 置 0，不物理删除）
+### ============================================================
+DELETE {{host}}/api/pickup-points/16
+Authorization: Bearer {{token}}
+
+###
+### ============================================================
+### #12 团长绑定自提点（需 ROLE_ADMIN）
+### 规则：leader.point_id 有唯一索引 uk_point_id，
+###       已被别的团长绑定 → code=10016
+### 注意：路径里的 {id} 是 **leader 表主键**，不是 user_id
+### ============================================================
+PUT {{host}}/api/leaders/1/bind-point
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "pointId": 2
+}
+
+###
+### #12 绑定冲突样例 —— 把 pointId 换成已被别人占用的自提点，期望 code=10016
+### ============================================================
+PUT {{host}}/api/leaders/1/bind-point
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "pointId": 1
+}
+
+###
+### ② 再发这条登录（居民 user1），下面那条 403 样例要用它的 token
+### ============================================================
+# @name loginResident
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393"
+}
+
+###
+### 无权限样例 —— 用居民 token 调绑定接口，期望 HTTP 403
+### ============================================================
+PUT {{host}}/api/leaders/1/bind-point
+Authorization: Bearer {{loginResident.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "pointId": 3
+}

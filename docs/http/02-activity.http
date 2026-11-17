@@ -1,0 +1,134 @@
+@host  = http://localhost:8080
+@token = {{loginLeader.response.body.$.data.token}}
+
+###
+### ① 先发这条登录（团长）拿到 token，下面 #5 #6 才能用
+### ============================================================
+# @name loginLeader
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "leader1",
+  "password": "897393"
+}
+
+###
+### ============================================================
+### #3 活动列表 — 无条件（默认第 1 页，每页 10 条）
+### 响应 data：{ total, pages, list[] }，list 元素是 ActivityVO
+### ============================================================
+GET {{host}}/api/activities?pageNum=1&pageSize=10
+
+###
+### #3 活动列表 — 关键词模糊匹配（对应动态 SQL 的 <if> 分支 1）
+### ============================================================
+GET {{host}}/api/activities?keyword=水果&pageNum=1&pageSize=10
+
+###
+### #3 活动列表 — 按状态筛（分支 2）：0待开始 1进行中 2已成团 3已失败 4已下架
+### ============================================================
+GET {{host}}/api/activities?status=1&pageNum=1&pageSize=10
+
+###
+### #3 活动列表 — 按团长 + 自提点筛（分支 3、4），团长后台「我开的活动」用的就是这条
+### ============================================================
+GET {{host}}/api/activities?leaderId=1&pointId=1&pageNum=1&pageSize=10
+
+###
+### #3 活动列表 — 四个条件叠加（验证动态 SQL 全分支）
+### ============================================================
+GET {{host}}/api/activities?keyword=水果&status=1&leaderId=1&pointId=1&pageNum=1&pageSize=5
+
+###
+### ============================================================
+### #4 活动详情 — 返回 ActivityVO + point + goods 列表（含 available 库存）
+### 走 Cache-Aside：第一次回源 DB，第二次命中 Redis（响应更快）
+### ============================================================
+GET {{host}}/api/activities/1
+
+###
+### ============================================================
+### #5 团长开团（需 ROLE_LEADER）
+### 规则：pointId 必须是自己已绑定的自提点，否则 10016；库存同步初始化
+### 成功：data = { "activityId": 新活动 id }
+### ============================================================
+POST {{host}}/api/activities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "周末水果团（http 示例）",
+  "pointId": 1,
+  "targetNum": 50,
+  "buyLimit": 2,
+  "startTime": "2026-11-20 10:00:00",
+  "endTime": "2026-11-22 18:00:00",
+  "goods": [
+    {
+      "name": "泰国金枕榴莲",
+      "originPrice": 129.00,
+      "groupPrice": 89.00,
+      "total": 1000
+    }
+  ]
+}
+
+###
+### ============================================================
+### #6 活动状态变更（需 ROLE_LEADER 本人 / ROLE_ADMIN）
+### version 是乐观锁版本号，必须传当前值；
+### 更新语句 WHERE id=? AND version=?，影响行数 0 即失败重试
+### ============================================================
+PUT {{host}}/api/activities/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": 4,
+  "version": 3
+}
+
+###
+### #6 非法流转样例 —— 0（待开始）直接跳 4（已下架），期望 code=10014
+### ============================================================
+PUT {{host}}/api/activities/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": 4,
+  "version": 1
+}
+
+###
+### ② 再发这条登录（居民 user1），下面那条 403 样例要用它的 token
+### ============================================================
+# @name loginResident
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393"
+}
+
+###
+### #6 无权限样例 —— 用居民 token 改活动状态，期望 HTTP 403
+### ============================================================
+PUT {{host}}/api/activities/1/status
+Authorization: Bearer {{loginResident.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "status": 1,
+  "version": 1
+}
+
+###
+### ============================================================
+### #18 拼团进度推送（SSE，C 的加分项，目前未实现 → 404）
+### 备选方案：前端每 3 秒轮询 GET /api/activities/1 的 currentNum
+### ============================================================
+GET {{host}}/api/activities/1/progress
+Accept: text/event-stream
