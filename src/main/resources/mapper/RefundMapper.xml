@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.RefundMapper">
+
+    <sql id="Base_Column_List">
+        id, refund_no, order_no, pay_no, amount, reason, status, refund_time, create_time, update_time
+    </sql>
+
+    <!--
+      幂等核心：uk_order_no 唯一索引。
+      同一订单第二次插入会抛 DuplicateKeyException，调用方捕获后跳过（防重复退款）。
+    -->
+    <insert id="insert" parameterType="com.groupbuy.entity.Refund"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO refund (refund_no, order_no, pay_no, amount, reason, status, refund_time)
+        VALUES (#{refundNo}, #{orderNo}, #{payNo}, #{amount}, #{reason}, #{status}, #{refundTime})
+    </insert>
+
+    <select id="selectByOrderNo" resultType="com.groupbuy.entity.Refund">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM refund WHERE order_no = #{orderNo}
+    </select>
+
+</mapper>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.RefundTaskMapper">
+
+    <!-- 进行中(status=1)且已到期(end_time < now)的活动；version 用于乐观锁置失败 -->
+    <select id="selectExpiredOngoing" resultType="com.groupbuy.entity.Activity">
+        SELECT id, point_id, status, end_time, version
+        FROM activity
+        WHERE status = 1 AND end_time &lt; NOW()
+    </select>
+
+</mapper>
