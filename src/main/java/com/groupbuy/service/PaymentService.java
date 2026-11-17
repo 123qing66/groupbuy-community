@@ -38,6 +38,7 @@ public class PaymentService {
     private final OrderMapper orderMapper;
     private final PaymentMapper paymentMapper;
     private final ActivityService activityService;
+    private final GroupJudgeService groupJudgeService;
 
     public PayCallbackResponse payCallback(Long orderId, PayCallbackRequest req) {
         // ① 验签：MD5(orderNo + tradeNo + amount + secret)，不一致直接报 10007
@@ -76,8 +77,14 @@ public class PaymentService {
             throw new BizException(ErrorCode.ORDER_STATUS_INVALID, "订单不是待支付状态");
         }
 
-        // ⑤ 参团人数 +1（成团判定在后续任务 #20 里做）
+        // ⑤ 参团人数 +1，然后触发成团判定（#20）
         activityService.incrCurrentNum(order.getActivityId(), 1);
+        try {
+            groupJudgeService.judgeIfFull(order.getActivityId());
+        } catch (Exception e) {
+            // 成团判定失败不影响支付结果，只记日志
+            log.warn("成团判定失败（不影响支付结果）activityId={}", order.getActivityId(), e);
+        }
 
         log.info("支付成功 orderNo={}, tradeNo={}", req.getOrderNo(), req.getTradeNo());
         // 重新查一次，拿到最新的状态和支付时间

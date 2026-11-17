@@ -38,4 +38,23 @@
         WHERE order_no = #{orderNo} AND status = 0
     </update>
 
+    <!-- 按活动 + 状态查订单（成团发码用） -->
+    <select id="selectByActivity" resultType="com.groupbuy.entity.Order">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM order_info
+        WHERE activity_id = #{activityId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY id
+    </select>
+
+    <!-- 按活动批量流转状态（成团：1→2），返回影响行数 -->
+    <update id="updateStatusByActivity">
+        UPDATE order_info
+        SET status = #{toStatus}
+        WHERE activity_id = #{activityId} AND status = #{fromStatus}
+    </update>
+
 </mapper>

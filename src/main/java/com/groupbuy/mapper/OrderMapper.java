@@ -3,6 +3,8 @@ package com.groupbuy.mapper;
 import com.groupbuy.entity.Order;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 /**
  * 订单 Mapper（B 下单时 insert，C 负责后续状态流转）。
  *
@@ -26,4 +28,13 @@ public interface OrderMapper {
 
     /** 支付成功：0 → 1 并写支付时间（一条 SQL 原子完成，供支付回调用） */
     int markPaid(@Param("orderNo") String orderNo);
+
+    /** 按活动 + 状态查订单（成团发码用，走 idx_activity_status） */
+    List<Order> selectByActivity(@Param("activityId") Long activityId,
+                                 @Param("status") Integer status);
+
+    /** 按活动批量流转状态（成团：1→2），影响行数 = 命中订单数 */
+    int updateStatusByActivity(@Param("activityId") Long activityId,
+                               @Param("fromStatus") Integer fromStatus,
+                               @Param("toStatus") Integer toStatus);
 }
