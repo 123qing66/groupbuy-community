@@ -37,4 +37,7 @@ public interface OrderMapper {
     int updateStatusByActivity(@Param("activityId") Long activityId,
                                @Param("fromStatus") Integer fromStatus,
                                @Param("toStatus") Integer toStatus);
+
+    /** 按订单号查商品名（核销响应用，JOIN goods 只读） */
+    String selectGoodsNameByOrderNo(@Param("orderNo") String orderNo);
 }

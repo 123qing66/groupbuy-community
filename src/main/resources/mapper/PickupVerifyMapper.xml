@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupbuy.mapper.PickupVerifyMapper">
+
+    <!--
+      幂等核销核心：WHERE code=? AND status=0。
+      影响行数 1 = 首次核销成功；0 = 已核销（或码不存在），不改数据、无副作用。
+    -->
+    <update id="verify">
+        UPDATE pickup_code
+        SET status = 1, verify_time = NOW(), verifier_id = #{verifierId}
+        WHERE code = #{code} AND status = 0
+    </update>
+
+</mapper>

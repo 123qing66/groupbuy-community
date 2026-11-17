@@ -57,4 +57,11 @@
         WHERE activity_id = #{activityId} AND status = #{fromStatus}
     </update>
 
+    <!-- 核销响应用：按订单号查商品名（JOIN goods 只读） -->
+    <select id="selectGoodsNameByOrderNo" resultType="java.lang.String">
+        SELECT g.name
+        FROM order_info o JOIN goods g ON o.goods_id = g.id
+        WHERE o.order_no = #{orderNo}
+    </select>
+
 </mapper>
