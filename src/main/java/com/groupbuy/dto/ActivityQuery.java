@@ -29,14 +29,21 @@ public class ActivityQuery {
     /** 默认 10，最大 100 */
     private Integer pageSize = 10;
 
-    /** 转成 MyBatis 的 offset，避免各人在 XML 里各写各的算法 */
-    public int offset() {
+    /**
+     * 转成 MyBatis 的 offset，避免各人在 XML 里各写各的算法。
+     *
+     * <p>注意：必须写成 {@code getXxx()} 形式——Mapper XML 里的 {@code #{offset}}
+     * 走的是 JavaBean getter，写成 {@code offset()} 会报
+     * "There is no getter for property named 'offset'"。</p>
+     */
+    public int getOffset() {
         int p = (pageNum == null || pageNum < 1) ? 1 : pageNum;
         int s = (pageSize == null || pageSize < 1) ? 10 : pageSize;
         return (p - 1) * s;
     }
 
-    public int size() {
+    /** 每页条数，上限 100，同样是 getter 形式供 XML 的 #{size} 使用 */
+    public int getSize() {
         return (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
     }
 }

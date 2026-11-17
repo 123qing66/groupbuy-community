@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>社区团购拼团系统 · 项目演示</title>
+<style>
+:root{
+  --red:#ff4d4f; --red2:#ff7a45; --orange:#ff6b35;
+  --bg:#eef1f6; --card:#fff; --line:#eef0f3;
+  --t1:#1f2430; --t2:#6b7280; --t3:#9aa1ad;
+  --green:#16a34a; --blue:#2563eb; --amber:#f59e0b; --purple:#7c3aed;
+  --r:14px; --sh:0 2px 12px rgba(20,25,40,.06);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:radial-gradient(1200px 600px at 15% 10%,#2b3350 0%,#151a2b 45%,#0e1220 100%);
+  color:var(--t1); min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:24px; gap:32px; flex-wrap:wrap;
+}
+/* ---------- 左侧说明 ---------- */
+.stage-info{width:340px;color:#e8ecf5}
+.stage-info h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.stage-info .sub{color:#9aa6bf;font-size:13px;margin-bottom:20px;line-height:1.7}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.badge{font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#cfd8ea}
+.badge.ok{background:rgba(22,163,74,.18);border-color:rgba(22,163,74,.5);color:#86efac}
+.badge.mock{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.45);color:#fcd34d}
+.panel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.panel h3{margin:0 0 10px;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px}
+.panel h3::before{content:"";width:3px;height:13px;background:var(--orange);border-radius:2px}
+.api{font-size:11.5px;color:#a9b4cb;line-height:1.9;font-family:ui-monospace,Consolas,monospace}
+.api b{color:#7ee2b8;font-weight:600}
+.api i{color:#fcd34d;font-style:normal}
+.sw{display:flex;align-items:center;gap:10px;font-size:13px;color:#cfd8ea;margin-top:4px}
+.sw input{appearance:none;width:40px;height:22px;border-radius:11px;background:rgba(255,255,255,.18);position:relative;cursor:pointer;transition:.2s}
+.sw input:checked{background:var(--green)}
+.sw input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.sw input:checked::after{left:21px}
+.tip{font-size:11.5px;color:#8894ad;line-height:1.7;margin-top:8px}
+/* ---------- 手机 ---------- */
+.phone{
+  width:390px;height:820px;background:var(--bg);border-radius:36px;
+  box-shadow:0 30px 70px rgba(0,0,0,.5),0 0 0 10px #1b2135,0 0 0 11px #2c3550;
+  display:flex;flex-direction:column;overflow:hidden;position:relative;flex-shrink:0;
+}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:24px;background:#1b2135;border-radius:0 0 16px 16px;z-index:30}
+.sbar{height:38px;background:linear-gradient(135deg,var(--red) 0%,var(--orange) 100%);display:flex;align-items:center;justify-content:space-between;padding:14px 18px 0;color:#fff;font-size:12px;font-weight:600;flex-shrink:0}
+.sbar .dots{display:flex;gap:3px;align-items:center}
+.sbar .dots i{width:3px;height:8px;background:#fff;border-radius:1px;display:block;opacity:.9}
+.sbar .dots i:nth-child(1){height:4px}.sbar .dots i:nth-child(2){height:6px}.sbar .dots i:nth-child(3){height:8px}.sbar .dots i:nth-child(4){height:10px}
+.appbar{background:linear-gradient(135deg,var(--red) 0%,var(--orange) 100%);color:#fff;padding:8px 14px 12px;flex-shrink:0}
+.appbar .title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.appbar .title span.dot{width:7px;height:7px;border-radius:50%;background:#7ee2b8;box-shadow:0 0 0 3px rgba(126,226,184,.25)}
+.appbar .title span.dot.off{background:#fcd34d;box-shadow:0 0 0 3px rgba(252,211,77,.25)}
+.search{margin-top:9px;background:rgba(255,255,255,.22);border-radius:20px;padding:7px 12px;display:flex;align-items:center;gap:6px;font-size:12.5px;color:rgba(255,255,255,.85)}
+.search input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:12.5px}
+.search input::placeholder{color:rgba(255,255,255,.7)}
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 12px 90px;scrollbar-width:thin}
+.body::-webkit-scrollbar{width:4px}
+.body::-webkit-scrollbar-thumb{background:#d3d8e2;border-radius:4px}
+/* 首页 */
+.chips{display:flex;gap:7px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:5px 13px;border-radius:16px;background:#fff;font-size:12.5px;color:var(--t2);border:1px solid transparent;cursor:pointer;transition:.15s}
+.chip.on{background:linear-gradient(135deg,var(--red),var(--orange));color:#fff;font-weight:600;box-shadow:0 3px 8px rgba(255,107,53,.3)}
+.banner{background:linear-gradient(120deg,#fff1e8,#ffe9e9);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh)}
+.banner .l b{font-size:14px;color:#c2410c;display:block;margin-bottom:3px}
+.banner .l small{font-size:11.5px;color:#9a6b4f}
+.banner .r{font-size:26px;font-weight:800;color:var(--red);font-family:ui-monospace,monospace}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;overflow:hidden;cursor:pointer;transition:.18s}
+.card:active{transform:scale(.985)}
+.card .top{display:flex;gap:11px;padding:12px}
+.thumb{width:86px;height:86px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff;position:relative;overflow:hidden}
+.thumb .tag{position:absolute;left:0;bottom:0;right:0;background:rgba(0,0,0,.45);font-size:10px;text-align:center;padding:2px 0;color:#fff}
+.info{flex:1;min-width:0;display:flex;flex-direction:column}
+.info .nm{font-size:14.5px;font-weight:700;line-height:1.35;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.info .desc{font-size:11.5px;color:var(--t3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.price{display:flex;align-items:baseline;gap:6px;margin-top:auto}
+.price .now{color:var(--red);font-size:18px;font-weight:800;font-family:ui-monospace,monospace}
+.price .now small{font-size:11px;font-weight:600}
+.price .old{color:var(--t3);font-size:11.5px;text-decoration:line-through}
+.price .save{font-size:10.5px;color:var(--red);background:#fff1f0;border-radius:3px;padding:1px 4px;margin-left:auto}
+.bar{height:5px;background:#f0f2f6;position:relative;overflow:hidden;margin:6px 0 5px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--orange),var(--red));border-radius:3px;transition:width .5s}
+.card .bot{padding:0 12px 11px}
+.meta{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:5px}
+.meta b{color:var(--red)}
+.btn-inline{background:linear-gradient(135deg,var(--red),var(--orange));color:#fff;border:none;border-radius:16px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.btn-inline:disabled{background:#d9dde5;cursor:not-allowed}
+.st{font-size:10.5px;padding:2px 7px;border-radius:4px;font-weight:600}
+.st0{background:#eef4ff;color:var(--blue)}.st1{background:#fff4e5;color:#d97706}
+.st2{background:#e9f9ef;color:var(--green)}.st3{background:#f1f2f5;color:var(--t2)}
+.st4{background:#f1f2f5;color:var(--t3)}
+/* 区块标题 */
+.sec{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 9px}
+.sec h2{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px}
+.sec h2::before{content:"";width:3px;height:14px;background:var(--red);border-radius:2px}
+.sec .more{font-size:11.5px;color:var(--t3)}
+/* 表单 */
+.form{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--sh)}
+.fld{margin-bottom:11px}
+.fld label{display:block;font-size:12px;color:var(--t2);margin-bottom:5px;font-weight:600}
+.fld input,.fld select,.fld textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px;outline:none;font-family:inherit;background:#fafbfc;transition:.15s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--orange);background:#fff}
+.btn{width:100%;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,var(--red),var(--orange));color:#fff;box-shadow:0 4px 12px rgba(255,77,79,.28)}
+.btn.ghost{background:#fff;color:var(--t2);box-shadow:none;border:1px solid var(--line)}
+.btn.sm{padding:9px;font-size:13.5px}
+.goods-row{display:flex;gap:7px;margin-bottom:7px;align-items:center}
+.goods-row input{flex:1}
+.mini{border:none;background:#fff1f0;color:var(--red);width:30px;height:32px;border-radius:8px;font-size:17px;cursor:pointer;flex-shrink:0}
+/* 详情页 */
+.hero{height:170px;display:flex;align-items:center;justify-content:center;font-size:64px;position:relative;color:#fff}
+.hero .back{position:absolute;left:12px;top:12px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px}
+.hero .cd{position:absolute;right:12px;bottom:12px;background:rgba(0,0,0,.55);color:#fff;font-size:11.5px;padding:4px 9px;border-radius:14px;font-family:ui-monospace,monospace}
+.dtl{background:#fff;border-radius:var(--r);padding:14px;margin-top:-12px;position:relative;box-shadow:var(--sh)}
+.dtl .tt{font-size:17px;font-weight:800;line-height:1.35}
+.dtl .pr{margin:9px 0 10px;display:flex;align-items:baseline;gap:8px}
+.dtl .pr b{font-size:26px;color:var(--red);font-family:ui-monospace,monospace}
+.dtl .pr s{color:var(--t3);font-size:12.5px}
+.kv{display:flex;font-size:12.5px;padding:7px 0;border-top:1px dashed var(--line);color:var(--t2)}
+.kv span:first-child{width:74px;color:var(--t3);flex-shrink:0}
+.kv span:last-child{flex:1;color:var(--t1);font-weight:500}
+.pbar{background:#fff7f5;border:1px solid #ffe0d6;border-radius:10px;padding:11px;margin-top:11px}
+.pbar .hd{display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:7px}
+.pbar .hd b{color:var(--red);font-size:15px;font-family:ui-monospace,monospace}
+.glist{background:#fff;border-radius:var(--r);padding:12px 14px;margin-top:10px;box-shadow:var(--sh)}
+.gitem{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.gitem:last-child{border-bottom:none}
+.gitem .em{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.gitem .gn{flex:1}
+.gitem .gn small{display:block;color:var(--t3);font-size:11px}
+.gitem .gp{color:var(--red);font-weight:700;font-family:ui-monospace,monospace}
+/* 订单 */
+.ocard{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:12px;margin-bottom:10px}
+.ocard .oh{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--t3);margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.ocard .ob{display:flex;gap:10px}
+.ocard .ob .th{width:56px;height:56px;border-radius:8px;font-size:25px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.ocard .oi{flex:1;min-width:0}
+.ocard .oi .t{font-size:13.5px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ocard .oi .s{font-size:11.5px;color:var(--t3)}
+.ocard .of{display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+.ocard .of .amt{font-size:15px;font-weight:800;color:var(--red);font-family:ui-monospace,monospace}
+.acts{display:flex;gap:7px}
+.obtn{border:1px solid var(--red);color:var(--red);background:#fff;border-radius:15px;padding:5px 12px;font-size:11.5px;cursor:pointer;font-weight:600}
+.obtn.pri{background:linear-gradient(135deg,var(--red),var(--orange));color:#fff;border:none}
+.obtn.gy{border-color:var(--line);color:var(--t2)}
+/* 我的 */
+.mine-hd{background:linear-gradient(135deg,var(--red),var(--orange));color:#fff;border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)}
+.avatar{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:700;flex-shrink:0;border:2px solid rgba(255,255,255,.5)}
+.mine-hd .nm{font-size:16px;font-weight:700;margin-bottom:3px}
+.mine-hd .rl{font-size:11.5px;background:rgba(255,255,255,.22);padding:2px 8px;border-radius:10px;display:inline-block}
+.grid4{background:#fff;border-radius:var(--r);padding:14px 6px;margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);box-shadow:var(--sh)}
+.grid4 div{text-align:center;cursor:pointer}
+.grid4 .n{font-size:19px;font-weight:800;color:var(--red);font-family:ui-monospace,monospace}
+.grid4 .t{font-size:11px;color:var(--t2);margin-top:2px}
+.row{background:#fff;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-top:10px}
+.row .it{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;font-size:13.5px;border-bottom:1px solid var(--line);cursor:pointer}
+.row .it:last-child{border-bottom:none}
+.row .it .ar{color:var(--t3);font-size:15px}
+.row .it .vl{color:var(--t3);font-size:12.5px}
+/* 底部tab */
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:62px;background:rgba(255,255,255,.97);border-top:1px solid var(--line);display:flex;z-index:20;padding-bottom:4px}
+.tabbar .tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--t3);font-size:10.5px;transition:.15s}
+.tabbar .tb.on{color:var(--red)}
+.tabbar .tb svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7}
+/* 弹层 */
+.mask{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:40;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:.22s}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{background:#fff;border-radius:18px 18px 0 0;width:100%;padding:16px 16px 20px;transform:translateY(100%);transition:.26s;max-height:78%;overflow-y:auto}
+.mask.on .sheet{transform:translateY(0)}
+.sheet h3{margin:0 0 12px;font-size:16px;text-align:center}
+.sheet .close{position:absolute;right:14px;top:12px;font-size:19px;color:var(--t3);cursor:pointer}
+.step{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px;font-size:11.5px;color:var(--t3)}
+.step i{width:22px;height:22px;border-radius:50%;background:#f0f2f6;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:700}
+.step i.on{background:linear-gradient(135deg,var(--red),var(--orange));color:#fff}
+.step .ln{width:26px;height:1px;background:var(--line)}
+.counter{display:flex;align-items:center;gap:12px;justify-content:center;margin:12px 0}
+.cbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:17px;cursor:pointer;color:var(--t1)}
+.cnum{font-size:19px;font-weight:800;font-family:ui-monospace,monospace;min-width:36px;text-align:center}
+/* 核销码 */
+.qr{width:170px;height:170px;margin:6px auto 10px;background:#fff;border:6px solid #fff;box-shadow:0 0 0 1px var(--line);border-radius:8px}
+.pcode{font-size:27px;font-weight:800;letter-spacing:5px;text-align:center;font-family:ui-monospace,monospace;color:var(--t1);margin:6px 0 4px}
+.pcode-tip{text-align:center;font-size:11.5px;color:var(--t3);margin-bottom:12px}
+.ok-icon{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 10px}
+/* toast */
+.toast{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(.9);background:rgba(0,0,0,.82);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:60;opacity:0;pointer-events:none;transition:.2s;max-width:80%;text-align:center;line-height:1.5}
+.toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.empty{text-align:center;padding:52px 20px;color:var(--t3);font-size:13px}
+.empty .em{font-size:42px;margin-bottom:10px;opacity:.5}
+.loading{text-align:center;padding:40px;color:var(--t3);font-size:12.5px}
+@media(max-width:800px){body{padding:12px}.stage-info{display:none}.phone{height:calc(100vh - 24px)}}
+</style>
+</head>
+<body>
+
+<div class="stage-info">
+  <h1>社区团购拼团系统</h1>
+  <div class="sub">Spring Boot 3 + MyBatis-Plus + Redis + MySQL<br>小组项目 · 完整流程可交互演示</div>
+  <div class="badge-row">
+    <span class="badge ok" id="bgLive">后端已连接</span>
+    <span class="badge" id="bgApi">18 条接口契约</span>
+    <span class="badge">A 已实现 7 条</span>
+  </div>
+
+  <div class="panel">
+    <h3>已真实联通的接口（A 活动域 + D 鉴权）</h3>
+    <div class="api">
+      <b>POST</b> /api/auth/login　登录（BCrypt + JWT）<br>
+      <b>GET</b> /api/auth/me　当前用户<br>
+      <b>POST</b> /api/users/register　注册<br>
+      <b>GET</b> /api/activities　列表·分页·动态条件<br>
+      <b>GET</b> /api/activities/{id}　详情（含缓存）<br>
+      <b>POST</b> /api/activities　开团（校验+初始化库存）<br>
+      <b>PUT</b> /api/activities/{id}/status　状态机流转<br>
+      <b>GET</b> /api/pickup-points　自提点<br>
+      <b>GET</b> /api/health　健康检查
+    </div>
+    <div class="tip">登录后会拿到 JWT，之后每个请求自动带 <code>Authorization: Bearer</code> 头；没登录点开团会看到 401。</div>
+  </div>
+
+  <div class="panel">
+    <h3>尚未实现的链路（演示为模拟数据）</h3>
+    <div class="api">
+      <i>POST</i> /api/orders　下单 Lua 预扣（B #7）<br>
+      <i>POST</i> /api/pay/callback　支付回调成团（C #8）<br>
+      <i>POST</i> /api/verify　核销提货码（C #10）<br>
+      <i>GET</i> /api/stats/group-rate　成团率看板（C #16）
+    </div>
+    <div class="tip">这些接口在 <b>docs/api.md</b> 里已冻结字段，队友照着写即可。演示页用本地模拟数据跑通完整链路，接口完成后把 <code>MOCK</code> 开关关掉就能直连。</div>
+  </div>
+
+  <div class="panel">
+    <h3>演示控制</h3>
+    <label class="sw"><input type="checkbox" id="swMock"> <span id="swTxt">直连后端（未连上自动回落模拟）</span></label>
+    <div class="tip">开团、状态流转、活动列表在后端运行时会写入真实 MySQL + Redis；下单/支付/核销暂由浏览器本地模拟。</div>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="sbar"><span>9:41</span><span>社区团购</span><span class="dots"><i></i><i></i><i></i><i></i></span></div>
+  <div class="appbar" id="appbar"></div>
+  <div class="body" id="body"></div>
+  <div class="tabbar" id="tabbar"></div>
+  <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ============ 基础 ============ */
+var BASE = '';
+var MOCK = false;          // 强制模拟
+var LIVE = false;          // 后端是否可达
+var ST = {0:'待开始',1:'进行中',2:'已成团',3:'已失败',4:'已下架'};
+var OST = {0:'待付款',1:'待成团',2:'待自提',3:'已完成',4:'已退款'};
+var EMOJI = ['🍓','🍇','🥭','🍊','🍉','🥝','🍑','🥬','🍅','🥚'];
+
+var S = {
+  tab:'home', acts:[], points:[], orders:[], user:null, token:'',
+  kw:'', filter:'all', detailId:null, orderTab:'all', role:'ROLE_RESIDENT'
+};
+
+/* localStorage */
+function load(){ try{ var o=JSON.parse(localStorage.getItem('gb_orders')||'[]'); S.orders=o;
+  var u=JSON.parse(localStorage.getItem('gb_user')||'null'); S.user=u;
+  S.token=localStorage.getItem('gb_token')||''; }catch(e){} }
+function save(){ try{ localStorage.setItem('gb_orders',JSON.stringify(S.orders));
+  localStorage.setItem('gb_user',JSON.stringify(S.user));
+  if(S.token) localStorage.setItem('gb_token',S.token); else localStorage.removeItem('gb_token'); }catch(e){} }
+
+/* 请求封装 */
+function api(path,opt){
+  opt = opt||{};
+  opt.headers = Object.assign({'Content-Type':'application/json'},opt.headers||{});
+  // 登录后统一带 JWT，D 的拦截器认这个头
+  if(S.token) opt.headers['Authorization'] = 'Bearer '+S.token;
+  return fetch(BASE+path,opt).then(function(r){ return r.json(); }).then(function(j){
+    if(j.code!==0) { var e=new Error(j.msg||('错误码 '+j.code)); e.code=j.code; throw e; }
+    return j.data;
+  });
+}
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('on')},1900); }
+function money(n){ return (Math.round(n*100)/100).toFixed(2); }
+/** 把后端错误码翻译成人话，联调时一眼看出问题 */
+function errTip(e,code,tip){
+  var msg=(e&&e.message)?e.message:'请求失败';
+  if(e&&String(e.code)===String(code)) return msg+'（'+tip+'）';
+  if(e&&String(e.code)==='401') return msg+'（请先登录）';
+  return msg;
+}
+function esc(s){
+  var M={'&':'\u0026amp;','<':'\u0026lt;','>':'\u0026gt;','"':'\u0026quot;'};
+  return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return M[c]; });
+}
+function emoji(n){ var h=0; for(var i=0;i<String(n).length;i++) h=(h*31+String(n).charCodeAt(i))>>>0; return EMOJI[h%EMOJI.length]; }
+function color(n){ var h=0; for(var i=0;i<String(n).length;i++) h=(h*131+String(n).charCodeAt(i))>>>0;
+  return 'linear-gradient(135deg,hsl('+(h%360)+',62%,58%),hsl('+((h+40)%360)+',66%,48%))'; }
+
+/* ============ 模拟数据（B/C/D 负责的真实链路） ============ */
+function mockActs(){
+  var now=Date.now(), d=86400000;
+  return [
+    {id:101,title:'泰国金枕榴莲·整箱直采',status:1,currentNum:86,targetNum:100,buyLimit:2,
+     startTime:fmt(now-2*d),endTime:fmt(now+1*d+3600000*5),pointName:'阳光小区自提点',leaderName:'张团长',
+     goods:[{id:3,name:'金枕榴莲 5斤装',originPrice:129,groupPrice:89,total:300}]},
+    {id:102,title:'山东烟台红富士苹果 10斤',status:2,currentNum:200,targetNum:200,buyLimit:5,
+     startTime:fmt(now-5*d),endTime:fmt(now+3*d),pointName:'幸福里驿站',leaderName:'王阿姨',
+     goods:[{id:4,name:'红富士苹果 10斤',originPrice:59.9,groupPrice:39.9,total:500},
+            {id:5,name:'阿克苏冰糖心 5斤',originPrice:45,groupPrice:29.9,total:300}]},
+    {id:103,title:'内蒙草原羔羊肉卷·冬季火锅专场',status:0,currentNum:0,targetNum:80,buyLimit:3,
+     startTime:fmt(now+12*3600000),endTime:fmt(now+4*d),pointName:'阳光小区自提点',leaderName:'张团长',
+     goods:[{id:6,name:'羔羊肉卷 500g×4',originPrice:158,groupPrice:118,total:200}]},
+    {id:104,title:'云南高山小土豆 20斤装',status:3,currentNum:23,targetNum:60,buyLimit:10,
+     startTime:fmt(now-6*d),endTime:fmt(now-1*d),pointName:'幸福里驿站',leaderName:'王阿姨',
+     goods:[{id:7,name:'小土豆 20斤',originPrice:49,groupPrice:32,total:150}]}
+  ];
+}
+function fmt(ms){ var d=new Date(ms); function p(n){return n<10?'0'+n:''+n;}
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+
+/* ============ 数据加载 ============ */
+function refresh(cb){
+  if(MOCK){ LIVE=false; S.acts=mockActs(); S.points=[
+      {id:1,name:'阳光小区自提点',address:'阳光小区3号楼1单元101'},{id:2,name:'幸福里驿站',address:'幸福里5号楼门厅'}];
+    paint(); cb&&cb(); return; }
+  api('/api/health').then(function(){
+    return api('/api/activities?pageNum=1&pageSize=50');
+  }).then(function(pg){
+    LIVE=true;
+    S.acts=(pg.list||[]).map(norm);
+    return api('/api/pickup-points').catch(function(){ return []; });
+  }).then(function(pts){
+    S.points=pts||[];
+    if(!S.acts.length){ S.acts=mockActs(); return null; }
+    // 列表接口只返回基础字段（不含商品/自提点），并发拉详情补全价格 —— 正好演示详情走 Redis 缓存
+    return Promise.all(S.acts.slice(0,10).map(function(a){
+      return api('/api/activities/'+a.id).then(function(d){
+        return {i:S.acts.indexOf(a), d:d};
+      }).catch(function(){ return null; });
+    }));
+  }).then(function(rows){
+    (rows||[]).forEach(function(r){
+      if(!r) return;
+      var full=norm(r.d); S.acts[r.i]=full;
+    });
+    // 有 token 就用 /api/auth/me 把登录态找回来（刷新页面不用重新登录）
+    if(!S.token) return null;
+    return api('/api/auth/me').then(function(d){
+      S.user={name:d.realName||d.username, username:d.username, roles:d.roles||[]};
+      save();
+    }).catch(function(){ S.token=null; S.user=null; save(); });
+  }).then(function(){
+    paint(); cb&&cb();
+  }).catch(function(e){
+    LIVE=false; S.acts=mockActs();
+    S.points=[{id:1,name:'阳光小区自提点',address:'阳光小区3号楼1单元101'},{id:2,name:'幸福里驿站',address:'幸福里5号楼门厅'}];
+    paint(); cb&&cb();
+  });
+}
+/* 后端 ActivityVO → 演示页统一结构 */
+function norm(a){
+  var goods=(a.goods||[]).map(function(g){ return {
+    id:g.id, name:g.name, originPrice:num(g.originPrice), groupPrice:num(g.groupPrice),
+    total:(g.total!=null? g.total : (g.available!=null? g.available : 0)) }; });
+  var gp = goods.length ? Math.min.apply(null,goods.map(function(g){return g.groupPrice;})) : 0;
+  var op = goods.length ? Math.min.apply(null,goods.map(function(g){return g.originPrice;})) : 0;
+  return { id:a.id, title:a.title, status:num(a.status), currentNum:num(a.currentNum)||0,
+    targetNum:num(a.targetNum)||0, buyLimit:num(a.buyLimit)||0, startTime:a.startTime, endTime:a.endTime,
+    version:num(a.version),
+    pointName:a.pointName||(a.point&&a.point.name)||'', leaderName:a.leaderName||'',
+    goods:goods, groupPrice:gp, originPrice:op, fromDb:true };
+}
+function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
+function gpOf(a){ return a.groupPrice!=null ? a.groupPrice : (a.goods&&a.goods.length? a.goods[0].groupPrice:0); }
+function opOf(a){ return a.originPrice!=null ? a.originPrice : (a.goods&&a.goods.length? a.goods[0].originPrice:0); }
+
+/* ============ 渲染 ============ */
+var TABS=[{k:'home',n:'团购'},{k:'leader',n:'开团'},{k:'order',n:'订单'},{k:'mine',n:'我的'}];
+var ICON={
+ home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-6h5v6"/>',
+ leader:'<path d="M12 5v14M5 12h14"/>',
+ order:'<path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M8 13h8"/>',
+ mine:'<circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/>'
+};
+
+function paint(){
+  document.getElementById('tabbar').innerHTML = TABS.map(function(t){
+    return '<div class="tb'+(S.tab===t.k?' on':'')+'" onclick="go(\''+t.k+'\')">'+
+      '<svg viewBox="0 0 24 24">'+ICON[t.k]+'</svg><span>'+t.n+'</span></div>';
+  }).join('');
+
+  var bar=document.getElementById('appbar');
+  var dot=LIVE?'<span class="dot"></span>':'<span class="dot off"></span>';
+  if(S.tab==='home'){
+    bar.innerHTML='<div class="title">'+dot+'社区团购 <span style="font-size:11px;font-weight:400;opacity:.85">'+(LIVE?'已连接后端':'演示数据')+'</span></div>'+
+      '<div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'+
+      '<input id="kw" placeholder="搜索团购活动 / 商品" value="'+esc(S.kw)+'" oninput="S.kw=this.value;renderBody()"></div>';
+  } else if(S.tab==='detail'){
+    bar.innerHTML='<div class="title">'+dot+'活动详情</div>';
+  } else if(S.tab==='leader'){
+    bar.innerHTML='<div class="title">'+dot+'团长工作台</div>';
+  } else if(S.tab==='order'){
+    bar.innerHTML='<div class="title">'+dot+'我的订单</div>';
+  } else {
+    bar.innerHTML='<div class="title">'+dot+'我的</div>';
+  }
+  renderBody();
+  var bg=document.getElementById('bgLive');
+  bg.textContent = LIVE?'后端已连接':'演示数据模式';
+  bg.className = 'badge '+(LIVE?'ok':'mock');
+}
+
+function renderBody(){
+  var b=document.getElementById('body');
+  if(S.tab==='home') b.innerHTML=viewHome();
+  else if(S.tab==='detail') b.innerHTML=viewDetail();
+  else if(S.tab==='leader') b.innerHTML=viewLeader();
+  else if(S.tab==='order') b.innerHTML=viewOrder();
+  else b.innerHTML=viewMine();
+  b.scrollTop=0;
+}
+function go(t){ S.tab=t; if(t==='order'){} paint(); }
+
+/* ---- 首页 ---- */
+var FILTER=[{k:'all',n:'全部'},{k:'1',n:'进行中'},{k:'0',n:'待开始'},{k:'2',n:'已成团'},{k:'3',n:'已失败'}];
+function viewHome(){
+  var list=S.acts.filter(function(a){
+    if(S.filter!=='all' && String(a.status)!==S.filter) return false;
+    if(S.kw){ var s=(a.title+' '+(a.goods||[]).map(function(g){return g.name;}).join(' ')).toLowerCase();
+      if(s.indexOf(S.kw.toLowerCase())<0) return false; }
+    return true;
+  });
+  var html='<div class="chips">'+FILTER.map(function(f){
+    return '<div class="chip'+(S.filter===f.k?' on':'')+'" onclick="S.filter=\''+f.k+'\';renderBody()">'+f.n+'</div>';
+  }).join('')+'</div>';
+
+  var onGoing=S.acts.filter(function(a){return a.status===1;}).length;
+  html+='<div class="banner"><div class="l"><b>今日正在拼 '+onGoing+' 场</b><small>成团后短信通知 · 到点自提</small></div>'+
+        '<div class="r">'+S.acts.length+'</div></div>';
+
+  if(!list.length) return html+'<div class="empty"><div class="em">🔍</div>没有符合条件的团购活动</div>';
+
+  html+='<div class="sec"><h2>附近团购</h2><span class="more">共 '+list.length+' 场</span></div>';
+  html+=list.map(card).join('');
+  return html;
+}
+function card(a){
+  var pct=a.targetNum? Math.min(100,Math.round(a.currentNum/a.targetNum*100)):0;
+  var gp=gpOf(a), op=opOf(a);
+  var can = a.status===1;
+  var cd = a.status===1 ? leftTime(a.endTime) : '';
+  return '<div class="card" onclick="openDetail('+a.id+')">'+
+    '<div class="top">'+
+      '<div class="thumb" style="background:'+color(a.title)+'">'+emoji(a.title)+
+        '<div class="tag">'+esc((a.goods&&a.goods[0]&&a.goods[0].name)||'团购')+'</div></div>'+
+      '<div class="info">'+
+        '<div class="nm">'+esc(a.title)+'</div>'+
+        '<div class="desc">'+esc(a.pointName||'—')+' · '+esc(a.leaderName||'团长')+(cd?' · '+cd:'')+'</div>'+
+        '<div class="price">'+(gp>0
+          ? '<span class="now"><small>¥</small>'+money(gp)+'</span>'+
+            (op>gp?'<span class="old">¥'+money(op)+'</span>':'')+
+            (op>gp?'<span class="save">省'+money(op-gp)+'</span>':'')
+          : '<span style="font-size:12px;color:#9aa1ad">团价见详情</span>')+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="bot">'+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="meta"><span>已拼 <b>'+a.currentNum+'</b> / '+a.targetNum+' 份'+
+        (a.buyLimit?' · 限购'+a.buyLimit+'份':'')+'</span>'+
+        '<span class="st st'+a.status+'">'+ST[a.status]+'</span></div>'+
+      '<div style="display:flex;justify-content:flex-end">'+
+        '<button class="btn-inline" '+(can?'':'disabled')+' onclick="event.stopPropagation();openDetail('+a.id+')">'+
+        (a.status===0?'未开始':a.status===1?'去参团':a.status===2?'已成团':a.status===3?'已失败':'已下架')+'</button></div>'+
+    '</div></div>';
+}
+function leftTime(et){
+  if(!et) return '';
+  var t=new Date(String(et).replace(/-/g,'/')).getTime()-Date.now();
+  if(t<=0) return '已结束';
+  var h=Math.floor(t/3600000), m=Math.floor(t%3600000/60000);
+  return (h>0? h+'小时':'')+m+'分后结束';
+}
+
+/* ---- 详情 ---- */
+function viewDetail(){
+  var a=find(S.detailId); if(!a) return '<div class="empty">活动不存在</div>';
+  var pct=a.targetNum?Math.min(100,Math.round(a.currentNum/a.targetNum*100)):0;
+  var gp=gpOf(a), op=opOf(a);
+  var h='<div class="hero" style="background:'+color(a.title)+'">'+
+      '<div class="back" onclick="go(\'home\')">‹</div>'+emoji(a.title)+
+      '<div class="cd">'+leftTime(a.endTime)+'</div></div>';
+  h+='<div class="dtl"><div class="tt">'+esc(a.title)+'</div>'+
+     '<div class="pr"><b>¥'+money(gp)+'</b>'+(op>gp?'<s>¥'+money(op)+'</s>':'')+
+     (op>gp?'<span class="save" style="font-size:11px;color:#ff4d4f;background:#fff1f0;padding:2px 6px;border-radius:4px">立省'+money(op-gp)+'</span>':'')+'</div>'+
+     '<div class="kv"><span>自提点</span><span>'+esc(a.pointName||'—')+'</span></div>'+
+     '<div class="kv"><span>团长</span><span>'+esc(a.leaderName||'—')+'</span></div>'+
+     '<div class="kv"><span>时间</span><span>'+esc(a.startTime||'')+' ~ '+esc(a.endTime||'')+'</span></div>'+
+     '<div class="kv"><span>限购</span><span>每人 '+a.buyLimit+' 份</span></div>'+
+     '<div class="pbar"><div class="hd"><span>还差 <b>'+Math.max(0,a.targetNum-a.currentNum)+'</b> 份成团</span>'+
+       '<span>'+a.currentNum+' / '+a.targetNum+'（'+pct+'%）</span></div>'+
+       '<div class="bar" style="margin:0"><i style="width:'+pct+'%"></i></div></div>'+
+     '</div>';
+  if(a.goods&&a.goods.length){
+    h+='<div class="glist"><div style="font-size:13px;font-weight:700;margin-bottom:4px">本团商品</div>'+
+      a.goods.map(function(g){
+        return '<div class="gitem"><div class="em" style="background:'+color(g.name)+'">'+emoji(g.name)+'</div>'+
+          '<div class="gn">'+esc(g.name)+'<small>库存 '+g.total+' 份</small></div>'+
+          '<div class="gp">¥'+money(g.groupPrice)+(g.originPrice>g.groupPrice?' <span style="font-size:11px;color:#9aa1ad;text-decoration:line-through;font-weight:400">'+money(g.originPrice)+'</span>':'')+'</div></div>';
+      }).join('')+'</div>';
+  }
+  h+='<div style="height:12px"></div><button class="btn" '+(a.status===1?'':'disabled style="background:#d9dde5;box-shadow:none"')+
+     ' onclick="openBuy('+a.id+')">'+(a.status===1?(gp>0?'立即参团 ¥'+money(gp):'立即参团'):ST[a.status])+'</button>';
+  h+='<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:10px;line-height:1.7">'+
+     (a.fromDb?'数据来自 MySQL，详情走 Redis 逻辑过期缓存':'演示数据 · 对应 B/C/D 未实现链路')+'</div>';
+  return h;
+}
+function find(id){ for(var i=0;i<S.acts.length;i++) if(String(S.acts[i].id)===String(id)) return S.acts[i]; return null; }
+function openDetail(id){ S.detailId=id; S.tab='detail'; paint(); }
+
+/* ---- 下单弹层 ---- */
+function openBuy(id){
+  var a=find(id); if(!a) return;
+  var max=Math.max(1,a.buyLimit||1);
+  sheet('<span class="close" onclick="closeSheet()">×</span><h3>确认参团</h3>'+
+    '<div class="step"><i class="on">1</i><span class="ln"></span><i>2</i><span class="ln"></span><i>3</i>'+
+    '<span style="margin-left:8px">下单 → 支付 → 成团提货</span></div>'+
+    '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">'+
+      '<div style="width:54px;height:54px;border-radius:9px;background:'+color(a.title)+';display:flex;align-items:center;justify-content:center;font-size:26px">'+emoji(a.title)+'</div>'+
+      '<div style="flex:1"><div style="font-size:13.5px;font-weight:600">'+esc(a.title)+'</div>'+
+      '<div style="font-size:15px;color:#ff4d4f;font-weight:800;font-family:ui-monospace,monospace">¥'+money(gpOf(a))+'</div></div></div>'+
+    '<div class="fld"><label>购买数量（限购 '+max+' 份）</label>'+
+      '<div class="counter"><button class="cbtn" onclick="setNum(-1)">−</button>'+
+      '<span class="cnum" id="num">1</span><button class="cbtn" onclick="setNum(1)">+</button></div></div>'+
+    '<div class="fld"><label>自提点</label><select id="pt">'+S.points.map(function(p){
+        return '<option value="'+p.id+'">'+esc(p.name)+(p.address?'（'+esc(p.address)+'）':'')+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label>备注</label><input id="rmk" placeholder="选填，如：不要辣"></div>'+
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 2px;color:#6b7280">'+
+      '<span>合计</span><span style="color:#ff4d4f;font-weight:800;font-size:17px;font-family:ui-monospace,monospace">¥<span id="amt">'+money(gpOf(a))+'</span></span></div>'+
+    '<button class="btn" onclick="submitOrder('+a.id+')">提交订单</button>'+
+    '<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:9px">下单走 Redis Lua 预扣库存 → 落库（B 负责，演示为本地模拟）</div>',
+    a, max);
+}
+function setNum(d){
+  var el=document.getElementById('num'); if(!el) return;
+  var a=window._sheetAct, max=Math.max(1,a.buyLimit||1);
+  var v=parseInt(el.textContent)+d; if(v<1) v=1; if(v>max){ toast('每人限购 '+max+' 份（错误码 10004）'); v=max; }
+  el.textContent=v;
+  var amt=document.getElementById('amt'); if(amt) amt.textContent=money(gpOf(a)*v);
+}
+function sheet(html,act,max){ window._sheetAct=act; window._max=max;
+  document.getElementById('sheet').innerHTML=html;
+  document.getElementById('mask').classList.add('on'); }
+function closeSheet(){ document.getElementById('mask').classList.remove('on'); }
+function submitOrder(id){
+  var a=find(id), n=parseInt(document.getElementById('num').textContent)||1;
+  var pt=document.getElementById('pt'), rmk=document.getElementById('rmk');
+  var o={ id:'GB'+Date.now().toString().slice(-9), actId:a.id, title:a.title, emoji:emoji(a.title),
+    color:color(a.title), num:n, price:gpOf(a)*n, unit:gpOf(a), status:0,
+    pointName:(pt&&pt.selectedIndex>=0&&S.points[pt.selectedIndex])?S.points[pt.selectedIndex].name:(a.pointName||''),
+    remark:rmk?rmk.value:'', ctime:fmt(Date.now()), code:null, need:a.targetNum-a.currentNum };
+  S.orders.unshift(o); save(); closeSheet();
+  toast('下单成功，库存已预扣（待支付）');
+  S.tab='order'; paint();
+}
+
+/* ---- 订单 ---- */
+var OT=[{k:'all',n:'全部'},{k:'0',n:'待付款'},{k:'1',n:'待成团'},{k:'2',n:'待自提'},{k:'3',n:'已完成'}];
+function viewOrder(){
+  var list=S.orders.filter(function(o){ return S.orderTab==='all'||String(o.status)===S.orderTab; });
+  var h='<div class="chips">'+OT.map(function(t){
+    return '<div class="chip'+(S.orderTab===t.k?' on':'')+'" onclick="S.orderTab=\''+t.k+'\';renderBody()">'+t.n+'</div>';}).join('')+'</div>';
+  if(!list.length) return h+'<div class="empty"><div class="em">📦</div>还没有订单，去首页参个团吧</div>';
+  h+=list.map(function(o){
+    var acts=[];
+    if(o.status===0) acts.push('<button class="obtn pri" onclick="pay(\''+o.id+'\')">去支付</button><button class="obtn gy" onclick="cancel(\''+o.id+'\')">取消</button>');
+    if(o.status===1) acts.push('<button class="obtn gy" onclick="refund(\''+o.id+'\')">申请退款</button>');
+    if(o.status===2) acts.push('<button class="obtn pri" onclick="showCode(\''+o.id+'\')">出示提货码</button>');
+    if(o.status===3) acts.push('<button class="obtn gy" onclick="toast(\'已完成订单可申请售后\')">售后</button>');
+    return '<div class="ocard"><div class="oh"><span>'+o.id+'</span>'+
+      '<span style="color:'+(o.status===3?'#16a34a':'#ff4d4f')+';font-weight:600">'+OST[o.status]+'</span></div>'+
+      '<div class="ob"><div class="th" style="background:'+o.color+'">'+o.emoji+'</div>'+
+      '<div class="oi"><div class="t">'+esc(o.title)+'</div>'+
+      '<div class="s">'+o.num+' 份 × ¥'+money(o.unit)+' · '+esc(o.pointName||'')+'</div>'+
+      '<div class="s">'+o.ctime+(o.remark?' · '+esc(o.remark):'')+'</div></div></div>'+
+      '<div class="of"><span class="amt">¥'+money(o.price)+'</span><div class="acts">'+acts.join('')+'</div></div></div>';
+  }).join('');
+  return h;
+}
+function pay(id){
+  var o=findO(id); if(!o) return;
+  o.status=1; o.payTime=fmt(Date.now()); save();
+  // 模拟：支付回调 → 活动人数 +N，达到目标自动成团
+  var a=find(o.actId);
+  if(a){ a.currentNum=(a.currentNum||0)+o.num;
+    if(a.targetNum&&a.currentNum>=a.targetNum){ a.status=2; o.status=2; o.code=genCode();
+      o.need=0; } }
+  save(); paint();
+  toast(o.status===2? '支付成功，本团已成团！提货码已生成' : '支付成功，还差 '+Math.max(0,(a?a.targetNum-a.currentNum:0))+' 份成团');
+}
+function cancel(id){ var o=findO(id); if(!o) return; o.status=4; save(); paint(); toast('订单已取消，库存已回滚（Lua 回滚 + DB CAS）'); }
+function refund(id){ var o=findO(id); if(!o) return; o.status=4; save(); paint(); toast('退款成功，款项原路返回'); }
+function findO(id){ for(var i=0;i<S.orders.length;i++) if(S.orders[i].id===id) return S.orders[i]; return null; }
+function genCode(){ var s=''; for(var i=0;i<4;i++) s+=String(Math.floor(Math.random()*9000)+1000); return s.replace(/^(\d{4})(\d{4})(\d{4})(\d{4})$/,'$1 $2 $3 $4'); }
+
+/* ---- 提货码 ---- */
+function showCode(id){
+  var o=findO(id); if(!o) return;
+  sheet('<span class="close" onclick="closeSheet();S.tab=\'order\';paint()">×</span><h3>提货码</h3>'+
+    '<div style="text-align:center;font-size:12.5px;color:#6b7280;margin-bottom:4px">'+esc(o.title)+'</div>'+
+    '<canvas class="qr" id="qr" width="170" height="170"></canvas>'+
+    '<div class="pcode">'+o.code+'</div>'+
+    '<div class="pcode-tip">请向团长出示此码核销 · '+esc(o.pointName||'')+'</div>'+
+    '<button class="btn" onclick="verify(\''+o.id+'\')">模拟团长核销</button>'+
+    '<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:9px">'+
+    '核销接口做幂等：重复扫码返回首次结果（错误码 10010）</div>');
+  drawQR(document.getElementById('qr'), (o.code||'').replace(/\s/g,''));
+  window._curCode=o.id;
+}
+function drawQR(cv,text){
+  if(!cv) return;
+  var ctx=cv.getContext('2d'), n=25, cell=cv.width/n;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+  var seed=0; for(var i=0;i<text.length;i++) seed=(seed*31+text.charCodeAt(i))>>>0;
+  function rnd(){ seed=(seed*1103515245+12345)>>>0; return seed/4294967296; }
+  ctx.fillStyle='#1f2430';
+  for(var y=0;y<n;y++) for(var x=0;x<n;x++){
+    if(rnd()>0.52) ctx.fillRect(x*cell,y*cell,cell,cell);
+  }
+  // 三个定位角
+  function eye(ox,oy){ ctx.fillStyle='#fff'; ctx.fillRect(ox*cell-2,oy*cell-2,cell*7+4,cell*7+4);
+    ctx.fillStyle='#1f2430'; ctx.fillRect(ox*cell,oy*cell,cell*7,cell*7);
+    ctx.fillStyle='#fff'; ctx.fillRect(ox*cell+cell,oy*cell+cell,cell*5,cell*5);
+    ctx.fillStyle='#1f2430'; ctx.fillRect(ox*cell+cell*2,oy*cell+cell*2,cell*3,cell*3); }
+  eye(0,0); eye(n-7,0); eye(0,n-7);
+}
+function verify(id){
+  var o=findO(id); if(!o) return;
+  o.status=3; o.verifyTime=fmt(Date.now()); save(); closeSheet();
+  sheet('<h3>核销成功</h3><div class="ok-icon">✓</div>'+
+    '<div style="text-align:center;font-size:14px;font-weight:600;margin-bottom:4px">'+esc(o.title)+'</div>'+
+    '<div style="text-align:center;font-size:12px;color:#6b7280;line-height:1.9">'+
+      '提货码 '+o.code+'<br>核销时间 '+o.verifyTime+'<br>核销人 张团长 · '+esc(o.pointName||'')+'</div>'+
+    '<button class="btn" style="margin-top:14px" onclick="closeSheet();S.tab=\'order\';paint()">完成</button>');
+  paint();
+}
+
+/* ---- 团长工作台 ---- */
+function viewLeader(){
+  if(!S.user) return viewLogin();
+  var mine=S.acts.filter(function(a){return true;});
+  var h='<div class="mine-hd" style="border-radius:14px"><div class="avatar">团</div>'+
+    '<div><div class="nm">'+esc(S.user.name)+'</div><span class="rl">团长 · 阳光小区</span></div></div>';
+
+  var total=mine.length, ok=mine.filter(function(a){return a.status===2;}).length,
+      on=mine.filter(function(a){return a.status===1;}).length,
+      num=mine.reduce(function(s,a){return s+(a.currentNum||0);},0);
+  var rate= total? Math.round(ok/total*100):0;
+  h+='<div class="sec"><h2>成团数据看板</h2><span class="more">实时</span></div>'+
+    '<div class="grid4" style="margin-top:0">'+
+    '<div><div class="n">'+total+'</div><div class="t">总场次</div></div>'+
+    '<div><div class="n" style="color:#f59e0b">'+on+'</div><div class="t">进行中</div></div>'+
+    '<div><div class="n" style="color:#16a34a">'+ok+'</div><div class="t">已成团</div></div>'+
+    '<div><div class="n" style="color:#2563eb">'+rate+'%</div><div class="t">成团率</div></div></div>';
+
+  h+='<div class="sec"><h2>活动管理</h2><span class="more">状态机流转</span></div>';
+  h+=mine.map(function(a){
+    var next=[];
+    if(a.status===0) next=[{s:1,n:'开始拼团'},{s:4,n:'下架'}];
+    else if(a.status===1) next=[{s:2,n:'标记成团'},{s:3,n:'标记失败'},{s:4,n:'下架'}];
+    else if(a.status===2) next=[{s:4,n:'下架'}];
+    return '<div class="ocard"><div class="oh"><span>ID '+a.id+' · '+esc(a.pointName||'')+'</span>'+
+      '<span class="st st'+a.status+'">'+ST[a.status]+'</span></div>'+
+      '<div class="ob"><div style="width:44px;height:44px;border-radius:8px;background:'+color(a.title)+';display:flex;align-items:center;justify-content:center;font-size:22px">'+emoji(a.title)+'</div>'+
+      '<div class="oi"><div class="t">'+esc(a.title)+'</div>'+
+      '<div class="s">'+a.currentNum+' / '+a.targetNum+' 份 · ¥'+money(gpOf(a))+'</div></div></div>'+
+      '<div class="of"><span style="font-size:11.5px;color:#9aa1ad">v'+((a.version==null?0:a.version))+' 乐观锁</span>'+
+      '<div class="acts">'+ (next.length? next.map(function(x){
+          return '<button class="obtn" onclick="chg('+a.id+','+x.s+')">'+x.n+'</button>';}).join('')
+        : '<span style="font-size:11.5px;color:#9aa1ad">终态不可逆</span>') +'</div></div></div>';
+  }).join('');
+
+  h+='<div style="height:12px"></div><button class="btn" onclick="openCreate()">+ 发起新团购</button>';
+  h+='<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:9px;line-height:1.7">'+
+     '状态流转受状态机约束：待开始→进行中→已成团/已失败→已下架，非法流转返回 10014</div>';
+  return h;
+}
+function chg(id,s){
+  var a=find(id); if(!a) return;
+  if(!LIVE){ a.status=s; saveActs(); paint(); toast('已流转为「'+ST[s]+'」（演示模式，未写库）'); return; }
+  api('/api/activities/'+id+'/status',{method:'PUT',body:JSON.stringify({status:s,version:(a.version||0)})})
+    .then(function(){ toast('状态已流转为「'+ST[s]+'」，已写入 MySQL'); return refresh(); })
+    .catch(function(e){ toast('流转失败：'+errTip(e,'10014','状态机拦截，非法流转')); });
+}
+function saveActs(){}
+
+/* ---- 开团表单 ---- */
+function openCreate(){
+  sheet('<span class="close" onclick="closeSheet()">×</span><h3>发起新团购</h3>'+
+    '<div class="fld"><label>活动标题</label><input id="c_t" placeholder="如：周末水果团"></div>'+
+    '<div class="fld"><label>自提点</label><select id="c_p">'+S.points.map(function(p){
+      return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('')+'</select></div>'+
+    '<div style="display:flex;gap:8px"><div class="fld" style="flex:1"><label>成团目标（份）</label><input id="c_n" type="number" value="50"></div>'+
+    '<div class="fld" style="flex:1"><label>每人限购</label><input id="c_l" type="number" value="2"></div></div>'+
+    '<div style="display:flex;gap:8px"><div class="fld" style="flex:1"><label>开始时间</label><input id="c_s" value="'+fmt(Date.now()+3600000)+'"></div>'+
+    '<div class="fld" style="flex:1"><label>结束时间</label><input id="c_e" value="'+fmt(Date.now()+3*86400000)+'"></div></div>'+
+    '<div class="fld"><label>商品清单</label><div id="c_g">'+
+      goodsRow()+'</div><button class="btn ghost sm" style="margin-top:6px" onclick="addGoods()">+ 添加商品</button></div>'+
+    '<button class="btn" onclick="submitCreate()">提交开团</button>'+
+    '<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:9px">'+
+    '后端会写 activity + goods + stock 三张表，并预热 Redis 库存</div>');
+}
+function goodsRow(){
+  return '<div class="goods-row"><input placeholder="商品名" class="g_n">'+
+    '<input placeholder="原价" type="number" class="g_o" style="max-width:66px">'+
+    '<input placeholder="团价" type="number" class="g_p" style="max-width:66px">'+
+    '<input placeholder="库存" type="number" class="g_t" style="max-width:66px" value="100"><button class="mini" onclick="this.parentNode.remove()">−</button></div>';
+}
+function addGoods(){ var d=document.getElementById('c_g'); if(d) d.insertAdjacentHTML('beforeend',goodsRow()); }
+function submitCreate(){
+  var t=document.getElementById('c_t').value.trim();
+  if(!t){ toast('请填写活动标题（错误码 400）'); return; }
+  var rows=document.querySelectorAll('#c_g .goods-row'); var goods=[];
+  for(var i=0;i<rows.length;i++){
+    var n=rows[i].querySelector('.g_n').value.trim();
+    if(!n) continue;
+    goods.push({name:n, originPrice:parseFloat(rows[i].querySelector('.g_o').value)||0,
+      groupPrice:parseFloat(rows[i].querySelector('.g_p').value)||0,
+      total:parseInt(rows[i].querySelector('.g_t').value)||0});
+  }
+  if(!goods.length){ toast('至少需要一个商品（错误码 400）'); return; }
+  var body={ title:t, pointId:parseInt(document.getElementById('c_p').value),
+    targetNum:parseInt(document.getElementById('c_n').value)||50,
+    buyLimit:parseInt(document.getElementById('c_l').value)||2,
+    startTime:document.getElementById('c_s').value, endTime:document.getElementById('c_e').value,
+    goods:goods };
+  if(!LIVE){
+    var a=norm({id:Date.now()%100000,title:t,status:0,currentNum:0,targetNum:body.targetNum,buyLimit:body.buyLimit,
+      startTime:body.startTime,endTime:body.endTime,
+      pointName:(S.points.filter(function(p){return p.id==body.pointId})[0]||{}).name||'',leaderName:'张团长',
+      goods:goods.map(function(g,k){return {id:900+k,name:g.name,originPrice:g.originPrice,groupPrice:g.groupPrice,total:g.total};})});
+    S.acts.unshift(a); closeSheet(); paint(); toast('开团成功（演示模式，未写库）'); return;
+  }
+  api('/api/activities',{method:'POST',body:JSON.stringify(body)})
+    .then(function(d){
+      closeSheet();
+      var id=(d&&(d.activityId||d.id))||'';
+      toast('开团成功，活动 ID '+id+'（已写库并预热 Redis）');
+      return refresh();
+    })
+    .catch(function(e){ toast('开团失败：'+errTip(e,'10016','该自提点未绑定你')); });
+}
+
+/* ---- 我的 / 登录 ---- */
+function viewLogin(){
+  return '<div style="padding:26px 6px"><div style="text-align:center;font-size:44px;margin-bottom:6px">🛒</div>'+
+    '<div style="text-align:center;font-size:15px;font-weight:700;margin-bottom:4px">登录社区团购</div>'+
+    '<div style="text-align:center;font-size:11.5px;color:#9aa1ad;margin-bottom:20px">演示账号：leader1 / 123456（团长）</div>'+
+    '<div class="form">'+
+    '<div class="fld"><label>用户名</label><input id="lg_u" value="leader1"></div>'+
+    '<div class="fld"><label>密码</label><input id="lg_p" type="password" value="123456"></div>'+
+    '<button class="btn" onclick="doLogin()">登 录</button>'+
+    '<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:10px;line-height:1.7">'+
+    '真实登录走 JWT：POST /api/auth/login → 返回 token，请求头带 Authorization: Bearer <token><br>'+
+    (LIVE?'后端已连接，登录会走真实接口（BCrypt 比对 + 签发 JWT）':'后端未连接，此处为本地模拟登录')+'</div></div></div>';
+}
+function doLogin(){
+  var u=document.getElementById('lg_u').value.trim()||'leader1';
+  var p=document.getElementById('lg_p').value||'123456';
+  if(!LIVE){
+    S.user={name:u, role:'ROLE_LEADER', roles:['ROLE_LEADER']}; save();
+    toast('登录成功（演示模式，未走接口）'); paint(); return;
+  }
+  api('/api/auth/login',{method:'POST',body:JSON.stringify({username:u,password:p})})
+    .then(function(d){
+      S.token=d.token;
+      S.user={name:d.realName||d.username, username:d.username, roles:d.roles||[]};
+      save();
+      toast('登录成功，JWT 已签发（有效期 24h）');
+      paint();
+    })
+    .catch(function(e){ toast('登录失败：'+errTip(e,'10013','用户名或密码错误')); });
+}
+function viewMine(){
+  if(!S.user) return viewLogin();
+  var wait=S.orders.filter(function(o){return o.status===0;}).length;
+  var ing=S.orders.filter(function(o){return o.status===1;}).length;
+  var pick=S.orders.filter(function(o){return o.status===2;}).length;
+  var done=S.orders.filter(function(o){return o.status===3;}).length;
+  var h='<div class="mine-hd"><div class="avatar">'+esc(S.user.name.charAt(0).toUpperCase())+'</div>'+
+    '<div><div class="nm">'+esc(S.user.name)+'</div><span class="rl">团长 · 已实名认证</span></div></div>'+
+    '<div class="grid4">'+
+    '<div onclick="S.tab=\'order\';S.orderTab=\'0\';paint()"><div class="n">'+wait+'</div><div class="t">待付款</div></div>'+
+    '<div onclick="S.tab=\'order\';S.orderTab=\'1\';paint()"><div class="n">'+ing+'</div><div class="t">待成团</div></div>'+
+    '<div onclick="S.tab=\'order\';S.orderTab=\'2\';paint()"><div class="n">'+pick+'</div><div class="t">待自提</div></div>'+
+    '<div onclick="S.tab=\'order\';S.orderTab=\'3\';paint()"><div class="n">'+done+'</div><div class="t">已完成</div></div></div>'+
+    '<div class="row">'+
+    '<div class="it" onclick="S.tab=\'leader\';paint()"><span>团长工作台</span><span class="ar">›</span></div>'+
+    '<div class="it" onclick="toast(\'自提点管理：GET /api/pickup-points\')"><span>我的自提点</span><span class="vl">阳光小区 ›</span></div>'+
+    '<div class="it" onclick="toast(\'我的核销记录：C 负责的 /api/verify/list\')"><span>核销记录</span><span class="ar">›</span></div>'+
+    '<div class="it" onclick="toast(\'排行榜：C 负责的 /api/stats/leader-ranking\')"><span>团长排行榜</span><span class="ar">›</span></div>'+
+    '</div>'+
+    '<div class="row"><div class="it" onclick="toast(\'接口文档：http://localhost:8080/doc.html\')"><span>接口文档（knife4j）</span><span class="vl">doc.html ›</span></div>'+
+    '<div class="it" onclick="clearAll()"><span>清空本地演示数据</span><span class="ar">›</span></div>'+
+    '<div class="it" onclick="logout()"><span style="color:#ff4d4f">退出登录</span><span class="ar">›</span></div></div>'+
+    '<div class="tip" style="text-align:center;font-size:11px;color:#9aa1ad;margin-top:14px;line-height:1.8">'+
+    '当前后端：'+(LIVE?'已连接 :8080':'未连接，展示演示数据')+'<br>Spring Boot 3 · MyBatis-Plus · Redis · MySQL</div>';
+  return h;
+}
+function logout(){ S.user=null; S.token=''; save(); S.tab='home'; paint(); toast('已退出，token 已丢弃'); }
+function clearAll(){ S.orders=[]; save(); paint(); toast('本地订单已清空'); }
+
+/* ---- 启动 ---- */
+document.getElementById('swMock').addEventListener('change',function(){
+  MOCK=this.checked; refresh();
+});
+load();
+document.getElementById('body').innerHTML='<div class="loading">正在连接后端服务…</div>';
+refresh(function(){ if(S.user&&S.tab==='mine'&&false){} });
+</script>
+</body>
+</html>

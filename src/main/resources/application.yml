@@ -39,3 +39,11 @@ knife4j:
   setting:
     language: zh_cn
     enable-version: false
+
+# JWT 登录令牌（D 负责）
+groupbuy:
+  jwt:
+    # 生产环境必须换成随机长字符串，并放到环境变量里，别提交进仓库
+    secret: groupbuy-community-dev-secret-please-change-in-prod
+    # 有效期（小时），演示用 24 小时；压测时别调太大，token 泄露窗口会变长
+    expire-hours: 24
