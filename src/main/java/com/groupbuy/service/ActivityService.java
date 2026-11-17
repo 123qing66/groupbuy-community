@@ -68,7 +68,7 @@ public class ActivityService {
         for (Activity a : list) {
             voList.add(toSimpleVO(a));
         }
-        return PageResult.of(total, query.size(), voList);
+        return PageResult.of(total, query.getSize(), voList);
     }
 
     // ==================== #4 活动详情（带缓存保护） ====================

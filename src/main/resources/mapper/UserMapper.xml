@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.groupbuy.mapper.UserMapper">
+
+    <!-- 统一列清单：新增字段只改这一处，避免各人 SQL 漏列 -->
+    <sql id="UserCols">
+        id, username, password, real_name, phone, status, create_time, update_time
+    </sql>
+
+    <!-- 登录主查询：命中 uk_username，全系统最高频的单点查询 -->
+    <select id="selectByUsername" resultType="com.groupbuy.entity.User">
+        SELECT
+        <include refid="UserCols"/>
+        FROM `user`
+        WHERE username = #{username}
+        LIMIT 1
+    </select>
+
+    <select id="selectById" resultType="com.groupbuy.entity.User">
+        SELECT
+        <include refid="UserCols"/>
+        FROM `user`
+        WHERE id = #{id}
+    </select>
+
+    <!-- 注册查重：快路径，真并发由 uk_username 兜底 -->
+    <select id="countByUsername" resultType="int">
+        SELECT COUNT(*) FROM `user` WHERE username = #{username}
+    </select>
+
+    <!-- 注册写入，主键回填给 AuthService 用来授角色 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `user` (username, password, real_name, phone, status)
+        VALUES (#{username}, #{password}, #{realName}, #{phone},
+                #{status, jdbcType=TINYINT})
+    </insert>
+
+    <!-- 登录时组装 roles 返回前端，走 user_role.idx_role_id -->
+    <select id="selectRolesByUserId" resultType="com.groupbuy.entity.Role">
+        SELECT r.id, r.role_code, r.role_name, r.create_time
+        FROM role r
+                 INNER JOIN user_role ur ON ur.role_id = r.id
+        WHERE ur.user_id = #{userId}
+    </select>
+
+    <!-- 注册时把角色编码换成角色 id，命中 uk_role_code -->
+    <select id="selectRoleByCode" resultType="com.groupbuy.entity.Role">
+        SELECT id, role_code, role_name, create_time
+        FROM role
+        WHERE role_code = #{roleCode}
+        LIMIT 1
+    </select>
+
+    <!-- 授权，uk_user_role 保证不会重复授予同一角色 -->
+    <insert id="insertUserRole">
+        INSERT INTO user_role (user_id, role_id) VALUES (#{userId}, #{roleId})
+    </insert>
+
+</mapper>

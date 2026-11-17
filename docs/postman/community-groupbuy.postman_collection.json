@@ -1,0 +1,892 @@
+{
+  "info": {
+    "_postman_id": "b7c1e9d2-4a55-4f10-9c3e-communityg01",
+    "name": "社区团购系统 · 接口测试（v1.0 冻结版）",
+    "description": "案例三 社区团购（生鲜自提）拼团系统 —— 接口契约 v1.0 的可执行测试集合。\n\n## 用法\n1. 导入本文件 + 同目录的「社区团购-本地.postman_environment.json」\n2. 右上角选环境「社区团购-本地」\n3. 先跑 00 连通性，再按 01→05 顺序跑（登录会自动把 token 存进环境变量，后续请求自动带上）\n\n## 重要约定（不是 bug）\n- **业务错误也返回 HTTP 200**，真实结果看响应体里的 `code`。只有 401/403/404/429 这类语义错误才用 HTTP 状态码。\n- 所有成功响应：`{ \"code\": 0, \"msg\": \"ok\", \"data\": ... }`\n- 时间格式统一 `yyyy-MM-dd HH:mm:ss`\n- 需要登录的接口：请求头 `Authorization: Bearer {{token}}`（登录请求的脚本会自动写入）\n\n## 覆盖范围\nA 活动域（已实现，全部可跑通）：认证、活动 CRUD、状态机、自提点、团长绑定\nB/C（未实现，接口留占位，返回 404 属正常）",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 连通性",
+      "description": "确认后端活着、数据库和 Redis 都连上了",
+      "item": [
+        {
+          "name": "健康检查",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('状态 UP', () => pm.expect(JSON.stringify(res.data)).to.include('UP'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "免登录。返回 status=UP 说明 Spring Boot 起来了；若 code=500 多半是 MySQL 3308 或 Redis 6380 没起。"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 认证（D #10）",
+      "description": "登录 → 拿 token 存进环境变量 → 后续请求自动带 Authorization。\n\n演示账号（密码都是 123456）：leader1=团长、user1=居民、admin1=管理员",
+      "item": [
+        {
+          "name": "① 登录（团长 leader1）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 登录成功', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('返回了 token', () => pm.expect(res.data.token).to.be.a('string').and.not.empty);",
+                  "pm.test('角色含 ROLE_LEADER', () => pm.expect(JSON.stringify(res.data.roles)).to.include('LEADER'));",
+                  "if (res.code === 0 && res.data) {",
+                  "  pm.environment.set('token', res.data.token);",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  pm.environment.set('userId', String(res.data.userId));",
+                  "  console.log('✅ token 已写入环境变量，userId=' + res.data.userId);",
+                  "  console.log('   ' + String(res.data.token).slice(0, 40) + '...');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"leader1\",\n  \"password\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "免登录。密码用 BCrypt 比对（库里存 $2a$10$...，无法反解）。\n\n**这一条必须先跑**，否则后面所有需要登录的请求都会返回 401。"
+          }
+        },
+        {
+          "name": "② 登录（居民 user1）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('角色含 ROLE_RESIDENT', () => pm.expect(JSON.stringify(res.data.roles)).to.include('RESIDENT'));",
+                  "pm.environment.set('token_user', res.data.token);",
+                  "console.log('居民 token 已存为 token_user（与团长的 token 分开）');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "注意：这一条**不会**覆盖团长的 token，它存到 token_user。\n跑完记得再点一次「① 登录（团长）」，把默认 token 换回团长，否则开团会因权限不足失败。"
+          }
+        },
+        {
+          "name": "③ 登录失败（密码错误 → 10013）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('HTTP 仍是 200（业务错误走 body）', () => pm.expect(pm.response.code).to.eql(200));",
+                  "pm.test('code = 10013 用户名或密码错误', () => pm.expect(res.code).to.eql(10013));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"leader1\",\n  \"password\": \"wrong-password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "安全设计：用户不存在和密码错误**返回同一个错误码 10013**，防止被拿来枚举用户名。"
+          }
+        },
+        {
+          "name": "④ 当前登录用户 /me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('返回当前用户 leader1', () => pm.expect(res.data.username).to.eql('leader1'));",
+                  "pm.test('没有返回密码字段', () => pm.expect(JSON.stringify(res.data)).to.not.include('$2a$'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "需要登录。演示页刷新后就是靠这个接口恢复登录态的。"
+          }
+        },
+        {
+          "name": "⑤ 未带 token 访问（→ code 401）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 401 未登录', () => pm.expect(res.code).to.eql(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "故意不带 Authorization 头。\n\n⚠ 注意：`code` 是 401，但 **HTTP 状态码也是 200**——因为项目约定业务错误统一走 body。别以为没生效。"
+          }
+        },
+        {
+          "name": "⑥ 注册新用户",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 注册成功', () => pm.expect(res.code).to.eql(0));",
+                  "console.log('新用户 id = ' + JSON.stringify(res.data));",
+                  "if (res.code === 10012) { console.log('⚠ 该用户名已存在（重复跑同一条会这样），改个名字再试'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser_{{$timestamp}}\",\n  \"password\": \"123456\",\n  \"realName\": \"接口测试用户\",\n  \"phone\": \"13900000000\",\n  \"roleCode\": \"ROLE_RESIDENT\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "register"]
+            },
+            "description": "username 用了 `{{$timestamp}}` 动态时间戳，重复跑不会撞唯一索引。\n\n想验证重复注册 → 把 username 改成固定值（如 testuser1）连点两次，第二次返回 **10012 用户名已存在**（uk_username 唯一索引兜底）。"
+          }
+        },
+        {
+          "name": "⑦ 退出登录",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "console.log('说明：JWT 无状态，服务端不维护黑名单，客户端删掉 token 即视为退出（登出后拿旧 token 仍可访问，属于设计取舍）');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "清掉本地 token 即可。答辩若被问「JWT 怎么登出」：答无状态 + 短 TTL，要做强制下线就加 Redis 黑名单（按 jti 存到过期时刻）。"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 活动（A #3 #4 #5 #6）",
+      "description": "浏览侧 GET 免登录；开团、状态流转必须带 token（团长）。",
+      "item": [
+        {
+          "name": "① 活动列表（分页）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "const list = res.data.list || [];",
+                  "if (list.length) {",
+                  "  const ids = list.map(x => String(x.id));",
+                  "  const cur = String(pm.environment.get('activityId') || '');",
+                  "  if (ids.indexOf(cur) === -1) {",
+                  "    pm.environment.set('activityId', ids[0]);",
+                  "    console.log('{{activityId}} 原值 ' + cur + ' 不在库里，已自动切到 ' + ids[0] + '（下一 条详情会用它）');",
+                  "  }",
+                  "}",
+                  "pm.test('返回分页结构 total/pages/list', () => {",
+                  "  pm.expect(res.data).to.have.property('total');",
+                  "  pm.expect(res.data).to.have.property('pages');",
+                  "  pm.expect(res.data).to.have.property('list');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activities?pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities"],
+              "query": [
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "description": "免登录（居民没登录也要能逛）。分页字段统一 `PageResult{total, pages, list}`。"
+          }
+        },
+        {
+          "name": "② 活动列表（关键词 + 状态筛选）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "console.log('命中 ' + (res.data ? res.data.total : 0) + ' 条');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activities?keyword=水果&status=1&pageNum=1&pageSize=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities"],
+              "query": [
+                { "key": "keyword", "value": "水果" },
+                { "key": "status", "value": "1" },
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "5" }
+              ]
+            },
+            "description": "验证 XML 里的动态 SQL（`<if>` 拼条件）：keyword 模糊 + status 精确。\n\nstatus 取值：0 待开始、1 进行中、2 已成团、3 已失败、4 已下架。"
+          }
+        },
+        {
+          "name": "③ 活动详情（含商品+库存，走缓存）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('含商品与库存', () => pm.expect(res.data.goods).to.be.an('array').that.is.not.empty);",
+                  "if (res.data) {",
+                  "  pm.environment.set('version', String(res.data.version));",
+                  "  console.log('activityId=' + res.data.id + ' version=' + res.data.version + '（已存入环境变量，状态流转要用）');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/{{activityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities", "{{activityId}}"]
+            },
+            "description": "**Cache-Aside + 逻辑过期**（防穿透/击穿/雪崩），TTL 带随机抖动。\n\n先跑这条再跑「开团」，`{{activityId}}` 会被自动更新成最新开出来的那个。"
+          }
+        },
+        {
+          "name": "④ 详情不存在（→ 10001）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 10001 活动不存在', () => pm.expect(res.code).to.eql(10001));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities", "999999"]
+            },
+            "description": "契约要求返回 10001（不是 code=0 + data=null）。"
+          }
+        },
+        {
+          "name": "⑤ 开团（正常，2 个商品）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 开团成功', () => pm.expect(res.code).to.eql(0));",
+                  "if (res.code === 0 && res.data) {",
+                  "  const newId = res.data.activityId || res.data.id;",
+                  "  pm.environment.set('activityId', String(newId));",
+                  "  pm.collectionVariables.set('activityId', String(newId));",
+                  "  pm.environment.set('version', '0');",
+                  "  console.log('✅ 新活动 id = ' + newId + '，已写入 {{activityId}}，后续请求会用它');",
+                  "}",
+                  "if (res.code === 401) { console.log('⚠ 401：先跑 01 的「① 登录（团长）」'); }",
+                  "if (res.code === 10016) { console.log('⚠ 10016：leader1 没绑 pointId 这个自提点，先跑 04 的绑定'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman 测试团 · 阳光小区\",\n  \"pointId\": {{pointId}},\n  \"targetNum\": 30,\n  \"buyLimit\": 2,\n  \"startTime\": \"2026-10-22 10:00:00\",\n  \"endTime\": \"2026-10-25 18:00:00\",\n  \"goods\": [\n    { \"name\": \"泰国金枕榴莲\", \"originPrice\": 129.00, \"groupPrice\": 89.90, \"total\": 1000 },\n    { \"name\": \"海南小台农芒果\", \"originPrice\": 59.00, \"groupPrice\": 39.90, \"total\": 500 }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities"]
+            },
+            "description": "需要团长 token。一次开团会做三件事：\n1. 插入 activity（并校验团长确实绑定了该自提点）\n2. 批量插入 goods（`useGeneratedKeys` 回填 id）\n3. 按 goods.id 初始化 stock（total = available，locked = 0）并**预热到 Redis**\n\n时间格式必须 `yyyy-MM-dd HH:mm:ss`，用 `T` 分隔会返回 400。"
+          }
+        },
+        {
+          "name": "⑥ 开团（越权：未绑定的自提点 → 10016）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 10016 自提点归属校验失败', () => pm.expect(res.code).to.eql(10016));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"越权开团测试（应被拦截）\",\n  \"pointId\": 2,\n  \"targetNum\": 10,\n  \"buyLimit\": 1,\n  \"startTime\": \"2026-10-22 10:00:00\",\n  \"endTime\": \"2026-10-24 18:00:00\",\n  \"goods\": [\n    { \"name\": \"测试商品\", \"originPrice\": 10.00, \"groupPrice\": 5.00, \"total\": 100 }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities"]
+            },
+            "description": "leader1 只绑定了自提点 1，用 pointId=2 开团必须被拒。\n\n这是「团长与自提点一对一绑定」的业务约束落地——没有这道校验，任何人都能拿任意 pointId 开团。"
+          }
+        },
+        {
+          "name": "⑦ 状态流转：待开始(0) → 进行中(1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 流转成功', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('状态已变为 1（进行中）', () => pm.expect(res.data.status).to.eql(1));",
+                  "console.log('version 已 +1（DB 里现在是 1），下一条非法流转用 version=1 去撞状态机');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": 1,\n  \"version\": {{version}},\n  \"reason\": \"Postman 手动开团\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/{{activityId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities", "{{activityId}}", "status"]
+            },
+            "description": "状态机转移表写死在 `ActivityStatus` 枚举里，非法流转直接 10014。\n\n`version` 是乐观锁：必须是数据库里的当前值（跑「③ 活动详情」会自动刷新）。并发下两个人同时改，后到的那个会失败，不会覆盖。"
+          }
+        },
+        {
+          "name": "⑧ 状态流转（非法：进行中(1) → 待开始(0) → 10014）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 10014 状态流转非法', () => pm.expect(res.code).to.eql(10014));",
+                  "console.log('状态机拦截生效：进行中不允许退回待开始');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": 0,\n  \"version\": 1,\n  \"reason\": \"试图倒流（应被拒绝）\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/{{activityId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activities", "{{activityId}}", "status"]
+            },
+            "description": "跑之前那条⑦把活动从 0 改到 1，这条想改回 0，必须被状态机拦住。\n\n如果返回 code=0，说明状态机漏了转移规则——这属于 Bug。"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 自提点（A #11）",
+      "description": "GET 免登录；增删改需要 token。删除是逻辑删除（status=0），订单和核销码仍会引用该 id。",
+      "item": [
+        {
+          "name": "① 自提点列表",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('是数组且非空', () => pm.expect(res.data).to.be.an('array').that.is.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-points"]
+            },
+            "description": "默认返回全部（含已停用）。居民端下单选择自提点时应传 `status=1`。"
+          }
+        },
+        {
+          "name": "② 自提点列表（仅启用 status=1）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('全部是启用状态', () => {",
+                  "  (res.data || []).forEach(p => pm.expect(p.status).to.eql(1));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-points?status=1&keyword=小区",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-points"],
+              "query": [
+                { "key": "status", "value": "1" },
+                { "key": "keyword", "value": "小区" }
+              ]
+            },
+            "description": "两个可选参数可单独用也可组合：`keyword` 模糊匹配名称，`status` 精确匹配。"
+          }
+        },
+        {
+          "name": "③ 自提点详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0', () => pm.expect(res.code).to.eql(0));",
+                  "pm.test('id 匹配', () => pm.expect(String(res.data.id)).to.eql(String(pm.environment.get('pointId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-points/{{pointId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-points", "{{pointId}}"]
+            },
+            "description": "{{pointId}} 默认 1（阳光小区自提点，leader1 绑的就是它）。"
+          }
+        },
+        {
+          "name": "④ 新增自提点（保存 newPointId）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 新增成功', () => pm.expect(res.code).to.eql(0));",
+                  "if (res.data && res.data.id) {",
+                  "  pm.environment.set('newPointId', String(res.data.id));",
+                  "  console.log('新建自提点 id = ' + res.data.id + '，已写入 {{newPointId}}');",
+                  "}",
+                  "if (res.code === 401) { console.log('⚠ 401：先跑 01 的登录'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman 新建自提点\",\n  \"address\": \"测试小区 9 号楼 101\",\n  \"contact\": \"测试联系人\",\n  \"phone\": \"13900001111\",\n  \"status\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-points",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-points"]
+            },
+            "description": "管理员权限（拦截器只校验登录，角色细粒度留给 D 后续加）。\n返回值形如 `{ \"id\": 3 }`，脚本会自动存成 {{newPointId}} 供后面改/停用使用。"
+          }
+        },
+        {
+          "name": "⑤ 修改自提点",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 修改成功', () => pm.expect(res.code).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman 新建自提点（已改名）\",\n  \"address\": \"测试小区 9 号楼 102\",\n  \"contact\": \"测试联系人\",\n  \"phone\": \"13900002222\",\n  \"status\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-points/{{newPointId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-points", "{{newPointId}}"]
+            },
+            "description": "改完可以再跑一次「③ 自提点详情」，把 {{pointId}} 临时改成 {{newPointId}} 看是否生效。"
+          }
+        },
+        {
+          "name": "⑥ 停用自提点（逻辑删除）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 停用成功', () => pm.expect(res.code).to.eql(0));",
+                  "console.log('逻辑删除：status 置 0，历史订单和核销码仍能引用这个 id，不会出现外键断裂');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-points/{{newPointId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-points", "{{newPointId}}"]
+            },
+            "description": "停用的是刚才新建的那个（{{newPointId}}），**不会**动演示用的自提点 1。"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 团长（A #12）",
+      "description": "团长与自提点一对一绑定。已被别人绑定的会报 10016（uk_point_id 唯一索引兜底）。",
+      "item": [
+        {
+          "name": "① 绑定自提点",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('code = 0 绑定成功', () => pm.expect(res.code).to.eql(0));",
+                  "if (res.code === 10016) { console.log('⚠ 该自提点已被其他团长绑定（一对一约束生效，属于预期行为）'); }",
+                  "if (res.code === 401) { console.log('⚠ 401：先跑 01 的登录'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pointId\": {{pointId}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/leaders/1/bind-point",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leaders", "1", "bind-point"]
+            },
+            "description": "路径里的 `1` 是 **leader 表主键**（不是 user 表 id）。\n\nleader1 (user_id=1) 对应 leader.id=1，已绑 pointId=1，所以重复跑这条会成功（幂等覆盖）。\n想测 10016 → 把 pointId 改成已被别的团长占用的值，或先造第二个团长。"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 下单/支付/核销（B、C 待实现，占位）",
+      "description": "这三条是 B #7 和 C #8 #10 的地盘，**现在跑会返回 404**——属正常，等他们推代码后直接点就能测。\n\n契约已冻结，字段见 docs/api.md，报错前先看描述确认以哪版为准。",
+      "item": [
+        {
+          "name": "① 下单（Redis 预扣 + DB CAS 兜底）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.code === 404) {",
+                  "  console.log('⚠ B 还没实现 POST /api/orders（code=404），契约已就绪，等他推代码');",
+                  "} else {",
+                  "  pm.test('code = 0 下单成功', () => pm.expect(res.code).to.eql(0));",
+                  "  pm.test('返回订单号与待支付金额', () => {",
+                  "    pm.expect(res.data).to.have.property('orderNo');",
+                  "    pm.expect(res.data).to.have.property('payAmount');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityId\": {{activityId}},\n  \"goodsId\": {{goodsId}},\n  \"num\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "**B 负责 (#7)**。`goodsId` 从「活动详情」的 `data.goods[].id` 里取（先跑一次 02③ 就能看到），填错会报 10001/10003。\n\n验收要点就在这条上：初始库存 1000，200 并发抢购后成功订单数恰为 1000、库存不为负。\n\n预期错误码：10003 库存不足（预扣失败快速失败）、10004 超限购、10002 活动未进行中、10015 重复下单、429 限流。"
+          }
+        },
+        {
+          "name": "② 支付回调（成团判定 + 触发退款）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.code === 404 || res.code === 401) {",
+                  "  console.log('⚠ C 还没实现支付接口（code=' + res.code + '）');",
+                  "  pm.test('接口未实现，契约已就绪', () => pm.expect(true).to.eql(true));",
+                  "} else {",
+                  "  pm.test('code = 0 支付成功', () => pm.expect(res.code).to.eql(0));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderNo\": \"GB20261022000001\",\n  \"tradeNo\": \"MOCK_TRADE_0001\",\n  \"amount\": 89.90,\n  \"sign\": \"mock-sign-please-replace\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/pay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}", "pay"]
+            },
+            "description": "**C 负责 (#8)**。路径里 `{{orderId}}` 是订单主键，先下单拿到再把 id 填进环境变量。\n\n第三方真实回调走的是另一个入口 **`POST /api/pay/callback`**（免登录、靠 `sign` 验签，验签失败返 10007），这条 `/pay` 是模拟支付、方便联调和演示。\n\n支付成功里要做：订单置已支付 → 活动人数 +1 → 达到 targetNum 则置已成团 → 批量生成核销码。"
+          }
+        },
+        {
+          "name": "③ 核销提货码（幂等：连点 5 次只成功 1 次）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.code === 404) {",
+                  "  console.log('⚠ C 还没实现核销接口（code=404）');",
+                  "} else {",
+                  "  pm.test('第一次成功 / 后续 10010 已使用', () => pm.expect([0, 10010]).to.include(res.code));",
+                  "  console.log('连点 5 次，应只看到 1 次 code=0，其余 10010');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/pickup-codes/{{pickupCode}}/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pickup-codes", "{{pickupCode}}", "verify"]
+            },
+            "description": "**C 负责 (#10)**。`{{pickupCode}}` 形如 `PC20261021ABCD1234`，来自成团后订单列表的 `pickupCode` 字段；code 走**路径参数**，无 body。\n\n验收要点：同一个核销码连核 5 次，只有 1 次成功，其余返 **10010 已使用**。\n\n实现要点：`UPDATE pickup_code SET status=1, verify_time=NOW(), verifier_id=? WHERE code=? AND status=0`，看影响行数——用 CAS 而不是「先查再改」，否则并发下会重复核销。"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8080" },
+    { "key": "token", "value": "" },
+    { "key": "activityId", "value": "1" },
+    { "key": "pointId", "value": "1" },
+    { "key": "newPointId", "value": "3" },
+    { "key": "version", "value": "0" }
+  ]
+}
