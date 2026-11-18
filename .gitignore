@@ -58,3 +58,6 @@ tmp/
 *.fcprjo
 CapCut/
 JianyingPro/
+
+# 压测运行产物（token、报告，含真实 JWT，严禁入库）
+perf/.run/
