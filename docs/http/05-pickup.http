@@ -1,0 +1,56 @@
+@host  = http://localhost:8080
+@token = {{loginLeader.response.body.$.data.token}}
+
+###
+### ① 先发这条登录（团长）拿 token —— 核销必须是该自提点的团长
+### ============================================================
+# @name loginLeader
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "leader1",
+  "password": "897393"
+}
+
+###
+### ============================================================
+### #10 团长核销提货码（目前未实现 → 404，C 负责）
+### 无 body，code 走路径参数；码格式 PC + yyyyMMdd + 8 位大写字母数字
+### 成功：data = { code, orderNo, goodsName, num, verifyTime }
+### 幂等关键：UPDATE ... WHERE code=? AND status=0
+###           影响行数 1 → 成功；0 → 已核销/无效，返回 10010 且不改数据
+### ============================================================
+POST {{host}}/api/pickup-codes/PC20261021ABCD1234/verify
+Authorization: Bearer {{token}}
+
+###
+### #10 重复核销样例 —— 再发一次同样的码，期望 code=10010（不是报错，是业务提示）
+### 压测验收（#29）：连发 5 次，只有第 1 次成功
+### ============================================================
+POST {{host}}/api/pickup-codes/PC20261021ABCD1234/verify
+Authorization: Bearer {{token}}
+
+###
+### #10 无效码样例 —— 期望 code=10009
+### ============================================================
+POST {{host}}/api/pickup-codes/PC00000000XXXXXXXX/verify
+Authorization: Bearer {{token}}
+
+###
+### ② 再发这条登录（居民 user1），下面那条 403 样例要用它的 token
+### ============================================================
+# @name loginResident
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393"
+}
+
+###
+### 无权限样例 —— 用居民 token 调核销，期望 HTTP 403
+### ============================================================
+POST {{host}}/api/pickup-codes/PC20261021ABCD1234/verify
+Authorization: Bearer {{loginResident.response.body.$.data.token}}
