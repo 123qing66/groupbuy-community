@@ -113,11 +113,27 @@
                 </configuration>
             </plugin>
 
-            <!-- 覆盖率：第 13 天 #26 用，先配好免得临时改 pom -->
+            <!--
+                覆盖率（Issue #26）：prepare-agent 插桩 → test 阶段出报告 → check 做门禁。
+
+                check 故意绑在 test 阶段而不是 verify：CI 跑的是 `mvn clean package`，
+                不会进 verify，绑 verify 等于门禁永远不生效。绑 test 才能让
+                "覆盖率不达标 = 构建失败"真正落在流水线上。
+
+                entity / dto 是 Lombok 生成的 getter/setter，算进覆盖率只会虚高，
+                排除后这个数字才代表"业务代码被测试盖住了多少"。
+            -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <exclude>com/groupbuy/entity/**</exclude>
+                        <exclude>com/groupbuy/dto/**</exclude>
+                        <exclude>com/groupbuy/GroupbuyApplication*</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -127,6 +143,30 @@
                         <id>report</id>
                         <phase>test</phase>
                         <goals><goal>report</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>test</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.45</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.35</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
