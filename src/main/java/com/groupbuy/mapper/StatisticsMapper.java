@@ -1,6 +1,7 @@
 package com.groupbuy.mapper;
 
 import com.groupbuy.dto.GroupRateVO;
+import com.groupbuy.dto.LeaderRankingRow;
 import com.groupbuy.dto.RefundReconciliationVO;
 import org.apache.ibatis.annotations.Param;
 
@@ -40,4 +41,16 @@ public interface StatisticsMapper {
      * 演示库只有十几条，量级上来后要在这里加分页参数。</p>
      */
     List<RefundReconciliationVO.Item> selectRefundDetails();
+
+    /**
+     * 团长业绩排行：按 GMV 降序取前 {@code limit} 名。
+     *
+     * <p>关联口径（docs/http/06-admin.http #15 特别强调过）：
+     * activity.leader_id 存的是 <b>leader 表主键</b>，不是 user_id。
+     * 团长姓名要绕一层 user.real_name 才有。</p>
+     *
+     * <p>成交口径：order_info.status IN (1,2,3) —— 已支付 / 已成团 / 已提货。
+     * 待支付(0)、已取消(4)、已退款(5) 都不算成交，否则 GMV 会被未付款的单撑虚。</p>
+     */
+    List<LeaderRankingRow> selectLeaderRanking(@Param("limit") int limit);
 }

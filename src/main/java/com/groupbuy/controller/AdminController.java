@@ -5,6 +5,7 @@ import com.groupbuy.common.ErrorCode;
 import com.groupbuy.common.R;
 import com.groupbuy.common.UserContext;
 import com.groupbuy.dto.GroupRateVO;
+import com.groupbuy.dto.LeaderRankingVO;
 import com.groupbuy.dto.RefundReconciliationVO;
 import com.groupbuy.service.StatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,6 +52,15 @@ public class AdminController {
     public R<RefundReconciliationVO> refundReconciliation() {
         requireAdmin();
         return R.ok(statisticsService.refundReconciliation());
+    }
+
+    @Operation(summary = "#15 团长业绩排行",
+            description = "按 GMV 降序取前 N 名；成交只算已支付/已成团/已提货的订单")
+    @GetMapping("/leader-ranking")
+    public R<LeaderRankingVO> leaderRanking(
+            @RequestParam(defaultValue = "10") Integer limit) {
+        requireAdmin();
+        return R.ok(statisticsService.leaderRanking(limit));
     }
 
     /**

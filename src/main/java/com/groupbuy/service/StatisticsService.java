@@ -3,6 +3,8 @@ package com.groupbuy.service;
 import com.groupbuy.common.BizException;
 import com.groupbuy.common.ErrorCode;
 import com.groupbuy.dto.GroupRateVO;
+import com.groupbuy.dto.LeaderRankingRow;
+import com.groupbuy.dto.LeaderRankingVO;
 import com.groupbuy.dto.RefundReconciliationVO;
 import com.groupbuy.mapper.StatisticsMapper;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 后台统计服务（D 负责，Issue #23）。
@@ -26,6 +30,10 @@ public class StatisticsService {
 
     /** 默认统计区间：近 30 天 */
     private static final int DEFAULT_RANGE_DAYS = 30;
+
+    /** 排行默认 / 最大条数 */
+    private static final int DEFAULT_RANKING_LIMIT = 10;
+    private static final int MAX_RANKING_LIMIT = 100;
 
     private final StatisticsMapper statisticsMapper;
 
@@ -94,6 +102,36 @@ public class StatisticsService {
             vo.setMismatchCount(0L);
         }
         vo.setDetails(statisticsMapper.selectRefundDetails());
+        return vo;
+    }
+
+    // ==================== #15 团长业绩排行 ====================
+
+    /**
+     * 团长业绩排行，按 GMV 降序。
+     *
+     * @param limit 取前 N 名，默认 10；传 0 或负数没有意义，统一夹到 [1, 100]
+     */
+    public LeaderRankingVO leaderRanking(Integer limit) {
+        int n = limit == null ? DEFAULT_RANKING_LIMIT : limit;
+        n = Math.max(1, Math.min(n, MAX_RANKING_LIMIT));
+
+        List<LeaderRankingRow> rows = statisticsMapper.selectLeaderRanking(n);
+        List<LeaderRankingVO.Item> list = new ArrayList<>(rows.size());
+        for (LeaderRankingRow row : rows) {
+            LeaderRankingVO.Item item = new LeaderRankingVO.Item();
+            item.setLeaderId(row.getLeaderId());
+            item.setLeaderName(row.getLeaderName());
+            item.setCommunity(row.getCommunity());
+            item.setActivityCount(row.getActivityCount());
+            item.setOrderCount(row.getOrderCount());
+            item.setGmv(row.getGmv());
+            item.setGroupRate(formatRate(row.getSuccessActivity(), row.getValidActivity()));
+            list.add(item);
+        }
+
+        LeaderRankingVO vo = new LeaderRankingVO();
+        vo.setList(list);
         return vo;
     }
 }
