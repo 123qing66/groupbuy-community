@@ -7,9 +7,11 @@ import com.groupbuy.common.UserContext;
 import com.groupbuy.dto.GroupRateVO;
 import com.groupbuy.dto.LeaderRankingVO;
 import com.groupbuy.dto.RefundReconciliationVO;
+import com.groupbuy.service.ExportService;
 import com.groupbuy.service.StatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.time.LocalDate;
 
 /**
@@ -33,6 +36,8 @@ import java.time.LocalDate;
 public class AdminController {
 
     private final StatisticsService statisticsService;
+
+    private final ExportService exportService;
 
     @Operation(summary = "#13 成团率统计",
             description = "按活动创建时间统计，默认近 30 天；分母不含已下架活动")
@@ -61,6 +66,15 @@ public class AdminController {
             @RequestParam(defaultValue = "10") Integer limit) {
         requireAdmin();
         return R.ok(statisticsService.leaderRanking(limit));
+    }
+
+    @Operation(summary = "#16 Excel 导出",
+            description = "type=activity|order|refund；返回 .xlsx 文件流，不套 {code,msg,data} 包装")
+    @GetMapping("/export")
+    public void export(@RequestParam(required = false) String type,
+                       HttpServletResponse response) throws IOException {
+        requireAdmin();
+        exportService.export(type, response);
     }
 
     /**

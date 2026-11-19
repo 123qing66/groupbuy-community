@@ -92,4 +92,76 @@
         LIMIT #{limit}
     </select>
 
+    <!-- ==================== #16 Excel 导出 ====================
+      三条查询共用一套约定：
+      1. WHERE id > #{afterId} 做游标分页，每批都走主键索引，不用 OFFSET；
+      2. 时间在 SQL 里 DATE_FORMAT 成字符串，直接进 Excel 当文本列。
+         不让 LocalDateTime 走到 EasyExcel，是为了绕开"框架转换器版本差异 +
+         Jackson 序列化"这类跨层问题（#23 的 cache 序列化坑已经吃过一次）；
+      3. 状态只查原始 code，中文翻译放在 Service，SQL 保持数据层干净。
+    -->
+    <select id="selectExportActivities" resultType="com.groupbuy.dto.ActivityExportRow">
+        SELECT
+            a.id                                                    AS id,
+            a.id                                                    AS activityId,
+            a.title                                                 AS title,
+            u.real_name                                             AS leaderName,
+            l.community                                             AS community,
+            p.name                                                  AS pointName,
+            a.target_num                                            AS targetNum,
+            a.current_num                                           AS currentNum,
+            g.group_price                                           AS groupPrice,
+            a.status                                                AS status,
+            DATE_FORMAT(a.start_time, '%Y-%m-%d %H:%i:%s')          AS startTime,
+            DATE_FORMAT(a.end_time,   '%Y-%m-%d %H:%i:%s')          AS endTime
+        FROM `activity` a
+        LEFT JOIN `leader` l       ON l.id = a.leader_id
+        LEFT JOIN `user` u         ON u.id = l.user_id
+        LEFT JOIN `pickup_point` p ON p.id = a.point_id
+        <!-- 一个活动可能有多个商品，这里只取 id 最小的那个做代表价，
+             否则 JOIN 会把一个活动炸成多行，导出行数就虚了 -->
+        LEFT JOIN `goods` g        ON g.id = (SELECT MIN(g2.id) FROM `goods` g2 WHERE g2.activity_id = a.id)
+        WHERE a.id > #{afterId}
+        ORDER BY a.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectExportOrders" resultType="com.groupbuy.dto.OrderExportRow">
+        SELECT
+            o.id                                                    AS id,
+            o.order_no                                              AS orderNo,
+            u.real_name                                             AS userName,
+            a.title                                                 AS activityTitle,
+            g.name                                                  AS goodsName,
+            o.num                                                   AS num,
+            o.pay_amount                                            AS payAmount,
+            o.status                                                AS status,
+            DATE_FORMAT(o.pay_time,    '%Y-%m-%d %H:%i:%s')         AS payTime,
+            DATE_FORMAT(o.create_time, '%Y-%m-%d %H:%i:%s')         AS createTime
+        FROM `order_info` o
+        LEFT JOIN `user` u     ON u.id = o.user_id
+        LEFT JOIN `activity` a ON a.id = o.activity_id
+        LEFT JOIN `goods` g    ON g.id = o.goods_id
+        WHERE o.id > #{afterId}
+        ORDER BY o.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectExportRefunds" resultType="com.groupbuy.dto.RefundExportRow">
+        SELECT
+            r.id                                                    AS id,
+            r.refund_no                                             AS refundNo,
+            r.order_no                                              AS orderNo,
+            r.pay_no                                                AS payNo,
+            r.amount                                                AS amount,
+            r.reason                                                AS reason,
+            r.status                                                AS status,
+            DATE_FORMAT(r.refund_time, '%Y-%m-%d %H:%i:%s')         AS refundTime,
+            DATE_FORMAT(r.create_time, '%Y-%m-%d %H:%i:%s')         AS createTime
+        FROM `refund` r
+        WHERE r.id > #{afterId}
+        ORDER BY r.id
+        LIMIT #{limit}
+    </select>
+
 </mapper>
