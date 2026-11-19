@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  后台统计 Mapper（D 负责，Issue #23）
+
+  口径说明（答辩会被问，写在这里省得翻文档）：
+    1. 只统计 status <> 4（已下架）的活动 —— 下架是运营动作，不代表"成团失败"，
+       放进分母会把成团率算低。
+    2. totalActivity 包含待开始(0) / 进行中(1) / 已成团(2) / 已失败(3)，
+       所以 total >= success + failed + ongoing，差额就是"待开始"的数量。
+    3. 时间条件用 create_time >= #{start} AND create_time < #{end}，
+       左闭右开，避免 endDate 当天的活动被漏掉。
+-->
+<mapper namespace="com.groupbuy.mapper.StatisticsMapper">
+
+    <!-- 成团率：一条 SQL 把四个桶都算出来，避免查四次表 -->
+    <select id="selectGroupRate" resultType="com.groupbuy.dto.GroupRateVO">
+        SELECT
+            COUNT(*)                                                   AS totalActivity,
+            CAST(COALESCE(SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END), 0) AS SIGNED) AS successActivity,
+            CAST(COALESCE(SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END), 0) AS SIGNED) AS failedActivity,
+            CAST(COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS SIGNED) AS ongoingActivity
+        FROM `activity`
+        WHERE create_time &gt;= #{start}
+          AND create_time &lt;  #{end}
+          AND status &lt;&gt; 4
+    </select>
+
+</mapper>
