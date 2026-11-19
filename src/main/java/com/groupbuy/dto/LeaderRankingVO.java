@@ -30,7 +30,7 @@ public class LeaderRankingVO {
         /** 成交总额 */
         private BigDecimal gmv;
 
-        /** 该团长的成团率 */
-        private BigDecimal groupRate;
+        /** 该团长的成团率，形如 "80.00%"，口径与 #13 一致（分母排除已下架） */
+        private String groupRate;
     }
 }
