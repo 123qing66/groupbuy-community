@@ -3,11 +3,13 @@ package com.groupbuy.service;
 import com.groupbuy.common.BizException;
 import com.groupbuy.common.ErrorCode;
 import com.groupbuy.dto.GroupRateVO;
+import com.groupbuy.dto.RefundReconciliationVO;
 import com.groupbuy.mapper.StatisticsMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -73,5 +75,25 @@ public class StatisticsService {
             return "0.00%";
         }
         return String.format("%.2f%%", num * 100.0 / den);
+    }
+
+    // ==================== #14 退款对账 ====================
+
+    /**
+     * 退款对账：汇总 + 明细。
+     *
+     * <p>mismatchCount 由 SQL 直接算（要 JOIN 订单比金额），Java 侧不重复实现一遍，
+     * 免得两边口径不一致。</p>
+     */
+    public RefundReconciliationVO refundReconciliation() {
+        RefundReconciliationVO vo = statisticsMapper.selectRefundSummary();
+        if (vo == null) {
+            vo = new RefundReconciliationVO();
+            vo.setRefundTotal(0L);
+            vo.setRefundAmount(BigDecimal.ZERO);
+            vo.setMismatchCount(0L);
+        }
+        vo.setDetails(statisticsMapper.selectRefundDetails());
+        return vo;
     }
 }

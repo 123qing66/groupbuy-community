@@ -5,6 +5,7 @@ import com.groupbuy.common.ErrorCode;
 import com.groupbuy.common.R;
 import com.groupbuy.common.UserContext;
 import com.groupbuy.dto.GroupRateVO;
+import com.groupbuy.dto.RefundReconciliationVO;
 import com.groupbuy.service.StatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,6 +43,14 @@ public class AdminController {
             @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
         requireAdmin();
         return R.ok(statisticsService.groupRate(startDate, endDate));
+    }
+
+    @Operation(summary = "#14 退款对账",
+            description = "退款汇总 + 明细；mismatchCount 为退款金额与订单实付不一致的条数，正常应为 0")
+    @GetMapping("/refund-reconciliation")
+    public R<RefundReconciliationVO> refundReconciliation() {
+        requireAdmin();
+        return R.ok(statisticsService.refundReconciliation());
     }
 
     /**

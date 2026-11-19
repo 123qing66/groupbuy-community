@@ -6,12 +6,13 @@
   后台统计 Mapper（D 负责，Issue #23）
 
   口径说明（答辩会被问，写在这里省得翻文档）：
-    1. 只统计 status <> 4（已下架）的活动 —— 下架是运营动作，不代表"成团失败"，
+    1. 【成团率】只统计 status <> 4（已下架）的活动 —— 下架是运营动作，不代表"成团失败"，
        放进分母会把成团率算低。
-    2. totalActivity 包含待开始(0) / 进行中(1) / 已成团(2) / 已失败(3)，
+       totalActivity 包含待开始(0) / 进行中(1) / 已成团(2) / 已失败(3)，
        所以 total >= success + failed + ongoing，差额就是"待开始"的数量。
-    3. 时间条件用 create_time >= #{start} AND create_time < #{end}，
-       左闭右开，避免 endDate 当天的活动被漏掉。
+       时间条件用 create_time >= #{start} AND create_time < #{end}，左闭右开。
+    2. 【退款对账】mismatchCount 是"对账"的意义所在：
+       退款单金额与订单实付金额不一致（含找不到订单的孤儿退款单）的条数，正常应为 0。
 -->
 <mapper namespace="com.groupbuy.mapper.StatisticsMapper">
 
@@ -26,6 +27,38 @@
         WHERE create_time &gt;= #{start}
           AND create_time &lt;  #{end}
           AND status &lt;&gt; 4
+    </select>
+
+    <!--
+      退款汇总。LEFT JOIN 订单是为了拿到实付金额做比对：
+        · o.order_no IS NULL        → 孤儿退款单，订单不存在，必然对不上账
+        · r.amount <> o.pay_amount  → 金额不一致
+      SUM(amount) 用 DECIMAL(12,2) 收敛，避免出现 2136.0000000001 这种浮点尾巴。
+    -->
+    <select id="selectRefundSummary" resultType="com.groupbuy.dto.RefundReconciliationVO">
+        SELECT
+            COUNT(*)                                                  AS refundTotal,
+            CAST(COALESCE(SUM(r.amount), 0) AS DECIMAL(12, 2))        AS refundAmount,
+            CAST(COALESCE(SUM(
+                CASE
+                    WHEN o.order_no IS NULL THEN 1
+                    WHEN r.amount &lt;&gt; o.pay_amount THEN 1
+                    ELSE 0
+                END), 0) AS SIGNED)                                   AS mismatchCount
+        FROM `refund` r
+        LEFT JOIN `order_info` o ON o.order_no = r.order_no
+    </select>
+
+    <!-- 退款明细：最近的在前面，同一天的按 id 兜底排序（refund_time 可能为 NULL） -->
+    <select id="selectRefundDetails" resultType="com.groupbuy.dto.RefundReconciliationVO$Item">
+        SELECT
+            r.refund_no   AS refundNo,
+            r.order_no    AS orderNo,
+            r.amount      AS amount,
+            r.status      AS status,
+            r.refund_time AS refundTime
+        FROM `refund` r
+        ORDER BY r.refund_time DESC, r.id DESC
     </select>
 
 </mapper>
