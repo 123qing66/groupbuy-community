@@ -1,7 +1,10 @@
 package com.groupbuy.mapper;
 
+import com.groupbuy.dto.ActivityExportRow;
 import com.groupbuy.dto.GroupRateVO;
 import com.groupbuy.dto.LeaderRankingRow;
+import com.groupbuy.dto.OrderExportRow;
+import com.groupbuy.dto.RefundExportRow;
 import com.groupbuy.dto.RefundReconciliationVO;
 import org.apache.ibatis.annotations.Param;
 
@@ -53,4 +56,23 @@ public interface StatisticsMapper {
      * 待支付(0)、已取消(4)、已退款(5) 都不算成交，否则 GMV 会被未付款的单撑虚。</p>
      */
     List<LeaderRankingRow> selectLeaderRanking(@Param("limit") int limit);
+
+    // ==================== #16 Excel 导出（游标分页，避免一次 select 全表） ====================
+
+    /**
+     * 活动明细导出，按主键游标分页。
+     *
+     * <p>用 {@code id > afterId} 而不是 {@code LIMIT offset, size}：后者越翻越慢
+     * （要扫掉前 offset 行），前者每页都走主键索引。首次调用传 {@code afterId = 0}。</p>
+     */
+    List<ActivityExportRow> selectExportActivities(@Param("afterId") long afterId,
+                                                   @Param("limit") int limit);
+
+    /** 订单明细导出，游标分页口径同上。 */
+    List<OrderExportRow> selectExportOrders(@Param("afterId") long afterId,
+                                            @Param("limit") int limit);
+
+    /** 退款明细导出，游标分页口径同上。 */
+    List<RefundExportRow> selectExportRefunds(@Param("afterId") long afterId,
+                                              @Param("limit") int limit);
 }
