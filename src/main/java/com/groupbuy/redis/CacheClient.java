@@ -3,6 +3,8 @@ package com.groupbuy.redis;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +49,19 @@ public class CacheClient {
     private static final long   JITTER_MAX_MS = 60_000L;
 
     private final StringRedisTemplate stringRedisTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * 必须注册 {@link JavaTimeModule}：缓存落点（如 {@code ActivityVO}）带 {@code LocalDateTime}，
+     * 裸 {@code new ObjectMapper()} 序列化时会抛 InvalidDefinitionException
+     * （"Java 8 date/time type `java.time.LocalDateTime` not supported by default"），
+     * 异常被下面的 catch 吞掉后表现为"缓存永远写不进去"，读写双向失效。
+     *
+     * <p>关掉 {@code WRITE_DATES_AS_TIMESTAMPS} 是为了让 Redis 里的时间是可读的 ISO 字符串
+     * （{@code "2026-11-19T10:00:00"}），而不是 {@code [2026,11,19,10,0]} 这种数组。</p>
+     */
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     // ==================== 基础 Cache-Aside（带空值缓存） ====================
 
