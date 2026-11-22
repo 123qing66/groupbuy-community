@@ -1,0 +1,110 @@
+@host  = http://localhost:8080
+@token = {{loginResident.response.body.$.data.token}}
+
+###
+### ① 先发这条登录（居民）拿 token
+### ============================================================
+# @name loginResident
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393"
+}
+
+###
+### ============================================================
+### #7 参团下单（需 ROLE_RESIDENT / ROLE_LEADER）
+### 服务端顺序：限流 → 限购/时间窗 → Redis Lua 预扣 → DB CAS 落库
+### 成功：data = { orderNo, payAmount, expireTime }
+### 失败码：10001 活动不存在 / 10002 未开始 / 10003 库存不足
+###        10004 超限购 / 10015 重复下单 / 429 触发限流
+### ============================================================
+POST {{host}}/api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "activityId": 1,
+  "goodsId": 11,
+  "num": 1
+}
+
+###
+### #7 重复下单样例 —— 再发一次同样的请求，期望 code=10015
+### （uk_user_activity 唯一索引兜底，不是靠查库判断）
+### ============================================================
+POST {{host}}/api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "activityId": 1,
+  "goodsId": 11,
+  "num": 1
+}
+
+###
+### #7 超限购样例 —— num 超过 buyLimit，期望 code=10004
+### ============================================================
+POST {{host}}/api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "activityId": 1,
+  "goodsId": 11,
+  "num": 99
+}
+
+###
+### ============================================================
+### #8 模拟支付回调（需登录，且只能付自己的单）
+### ⚠️ sign 不是随便填的：
+###    sign = MD5(orderNo + tradeNo + amount + "groupbuy-mock-secret")
+###    amount 必须是两位小数字符串（如 89.00）
+### 下面这组 sign 是按示例单号算好的，**换了 orderNo 必须重算**，
+### 重算命令见 docs/http/README.md 第五节 ②
+### 期望：code=0，data = { orderNo, orderStatus:1, payTime }
+### 重复发同一 tradeNo：返回首次结果，不重复加人数（幂等）
+### ============================================================
+POST {{host}}/api/orders/1/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "orderNo": "GB20261118000001",
+  "tradeNo": "MOCK20261118000001",
+  "amount": 89.00,
+  "sign": "3328d9f566f6ea2240b492c784c22dc7"
+}
+
+###
+### #8 验签失败样例 —— 把 sign 改错，期望 code=10007
+### ============================================================
+POST {{host}}/api/orders/1/pay
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "orderNo": "GB20261118000001",
+  "tradeNo": "MOCK20261118000002",
+  "amount": 89.00,
+  "sign": "00000000000000000000000000000000"
+}
+
+###
+### ============================================================
+### #9 我的订单（目前未实现 → 404，C 负责）
+### status：0待支付 1已支付 2已成团 3已提货 4已取消 5已退款
+### pickupCode 仅在 status=2 时返回，其余为 null
+### ============================================================
+GET {{host}}/api/orders?pageNum=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+### #9 我的订单 —— 只看已成团待提货
+### ============================================================
+GET {{host}}/api/orders?status=2&pageNum=1&pageSize=10
+Authorization: Bearer {{token}}

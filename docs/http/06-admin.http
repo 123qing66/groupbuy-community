@@ -1,0 +1,121 @@
+@host  = http://localhost:8080
+@token = {{loginAdmin.response.body.$.data.token}}
+
+###
+### ① 先发这条登录（管理员）拿 token —— 后台接口全部需要 ROLE_ADMIN
+### ============================================================
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin1",
+  "password": "897393"
+}
+
+###
+### ============================================================
+### #13 成团率统计（D 负责，Issue #23，目前未实现 → 404）
+### 参数：startDate / endDate（按活动创建时间，默认近 30 天）
+### 响应 data：{ totalActivity, successActivity, failedActivity,
+###              ongoingActivity, groupRate: "71.67%" }
+### groupRate = successActivity / totalActivity，
+###             **分母不含已下架**，保留两位小数带百分号
+### ============================================================
+GET {{host}}/api/admin/statistics/group-rate?startDate=2026-10-01&endDate=2026-11-30
+Authorization: Bearer {{token}}
+
+###
+### #13 成团率 —— 不传区间，走默认近 30 天
+### ============================================================
+GET {{host}}/api/admin/statistics/group-rate
+Authorization: Bearer {{token}}
+
+###
+### ============================================================
+### #14 退款对账（D 负责，Issue #23，目前未实现 → 404）
+### 响应 data：{ refundTotal, refundAmount, mismatchCount, details[] }
+### mismatchCount = 退款单金额 ≠ 订单实付金额 的条数
+### 正常应为 0 —— 这就是「对账」的意义，答辩时可以故意造一条脏数据演示
+### ============================================================
+GET {{host}}/api/admin/statistics/refund-reconciliation
+Authorization: Bearer {{token}}
+
+###
+### ============================================================
+### #15 团长业绩排行（D 负责，Issue #23，目前未实现 → 404）
+### 参数：limit 默认 10
+### 响应 data：{ list: [{ leaderId, leaderName, community,
+###                       activityCount, orderCount, gmv, groupRate }] }
+### 口径注意：activityCount 按 activity.leader_id（leader 表主键）统计，
+###          不是 user_id
+### ============================================================
+GET {{host}}/api/admin/statistics/leader-ranking?limit=10
+Authorization: Bearer {{token}}
+
+###
+### #15 排行 —— 只看前 3 名
+### ============================================================
+GET {{host}}/api/admin/statistics/leader-ranking?limit=3
+Authorization: Bearer {{token}}
+
+###
+### ============================================================
+### #16 Excel 导出（D 负责，Issue #24，目前未实现 → 404）
+### ⚠️ 返回文件流，不套 {code,msg,data} 包装
+### type 三选一：activity | order | refund
+### REST Client 会提示保存 .xlsx 文件，属正常现象
+### ============================================================
+GET {{host}}/api/admin/statistics/export?type=activity
+Authorization: Bearer {{token}}
+
+###
+### #16 导出订单明细
+### ============================================================
+GET {{host}}/api/admin/statistics/export?type=order
+Authorization: Bearer {{token}}
+
+###
+### #16 导出退款明细
+### ============================================================
+GET {{host}}/api/admin/statistics/export?type=refund
+Authorization: Bearer {{token}}
+
+###
+### ============================================================
+### #17 活动下架（D 负责，目前未实现 → 404）
+### 规则：只能 1 进行中 / 2 已成团 → 4 已下架，非法流转报 10014
+### ⚠️ 不许直接 UPDATE activity 表，必须调 A 的 ActivityService.offline()
+### ============================================================
+POST {{host}}/api/admin/activities/1/offline
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "违规下架（http 示例）"
+}
+
+###
+### #17 下架 —— reason 可以不传
+### ============================================================
+POST {{host}}/api/admin/activities/2/offline
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+###
+### 无权限样例 —— 用居民 token 调统计接口，期望 HTTP 403
+### ============================================================
+# @name loginResident
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393"
+}
+
+###
+GET {{host}}/api/admin/statistics/group-rate
+Authorization: Bearer {{loginResident.response.body.$.data.token}}

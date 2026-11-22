@@ -1,0 +1,96 @@
+@host = http://localhost:8080
+
+###
+### ============================================================
+### #1 登录（居民 user1）
+### 契约：POST /api/auth/login，返回 data.token
+### 成功：code=0，data 里含 token / userId / username / realName / roles
+### 失败：code=10013 用户名或密码错误
+### ============================================================
+# @name loginResident
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393"
+}
+
+###
+### #1 登录（团长 leader1）—— 开团、核销要用这个 token
+### ============================================================
+# @name loginLeader
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "leader1",
+  "password": "897393"
+}
+
+###
+### #1 登录（管理员 admin1）—— 后台统计、自提点管理要用这个 token
+### ============================================================
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin1",
+  "password": "897393"
+}
+
+###
+### #1 登录失败样例 —— 期望 code=10013（注意 HTTP 仍是 200）
+### ============================================================
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "wrong-password"
+}
+
+###
+### #2 注册成功样例 —— 期望 code=0，返回 data.userId
+### 重复发送会变成失败样例：第二次因 uk_username 唯一索引报 code=10012
+### ============================================================
+POST {{host}}/api/users/register
+Content-Type: application/json
+
+{
+  "username": "test_resident_01",
+  "password": "897393",
+  "realName": "测试居民",
+  "phone": "13900000001",
+  "roleCode": "ROLE_RESIDENT"
+}
+
+###
+### #2 注册失败样例 —— 用户名已存在，期望 code=10012
+### ============================================================
+POST {{host}}/api/users/register
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "897393",
+  "realName": "李小明",
+  "phone": "13800000002",
+  "roleCode": "ROLE_RESIDENT"
+}
+
+###
+### ------------------------------------------------------------
+### 以下两条是契约外的辅助接口（AuthController 里实现，方便联调）
+### ------------------------------------------------------------
+
+### 当前登录用户 —— 用 token 换回用户信息，验证 token 是否还有效
+### 期望：code=0；token 过期则 401
+GET {{host}}/api/auth/me
+Authorization: Bearer {{loginResident.response.body.$.data.token}}
+
+###
+### 登出 —— JWT 无状态，服务端不存 token，前端丢弃即可
+POST {{host}}/api/auth/logout
+Authorization: Bearer {{loginResident.response.body.$.data.token}}

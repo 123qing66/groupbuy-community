@@ -1,0 +1,38 @@
+# 集成测试专用配置（Issue #26）
+#
+# 与 application-dev.yml 的区别只有三点：
+#   1. 日志压到 warn，测试输出不被 MyBatis 的 SQL 噪音淹没；
+#   2. MyBatis 不打 SQL（排查时把 log-impl 换成 StdOutImpl 即可）；
+#   3. 不自动执行 schema.sql / data.sql —— 建表和演示数据由外部脚本负责，
+#      避免"测试跑到一半把开发库的表给重建了"。
+#
+# 数据库对准便携 MySQL（E:\PortableDev，端口 3308），CI 里由 workflow 的
+# DB_PORT=3306 覆盖，跟 application-dev.yml 用的是同一套环境变量。
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3308}/groupbuy?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  sql:
+    init:
+      mode: never
+
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: warn
+    com.groupbuy: warn
+
+# 测试用固定密钥，别在测试里依赖生产密钥
+groupbuy:
+  jwt:
+    secret: groupbuy-community-test-secret-not-for-prod
+    expire-hours: 1

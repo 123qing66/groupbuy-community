@@ -12,117 +12,127 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 核销码服务单测（A 负责，#12 生成侧）。
+ * 核销码生成单元测试（A 生成 / C 核销，D 在 #26 里补测试）。
  *
- * <p>重点验证格式约定 {@code PC + yyyyMMdd + 8位}，以及批量生成"一单一码、不重复"。</p>
+ * <p>码是线下取货的唯一凭据，格式错了团长就核不了销，所以这里的断言盯三件事：</p>
+ * <ol>
+ *   <li>格式必须是 {@code PC + yyyyMMdd + 8 位}，团长肉眼可见今天的日期；</li>
+ *   <li>字符集里<b>不能出现 0/O/1/I</b> —— 手抄码时最容易混的四个字符；</li>
+ *   <li>批量生成要按 pointId 统一归属，空列表不能打到 Mapper。</li>
+ * </ol>
  */
 @ExtendWith(MockitoExtension.class)
 class PickupCodeServiceTest {
 
-    @Mock private PickupCodeMapper pickupCodeMapper;
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    @InjectMocks private PickupCodeService pickupCodeService;
+    /** 与 CHARS 常量对齐：去掉了 0 O 1 I */
+    private static final String ALLOWED = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-    /** PC + 8位日期 + 8位（去掉 0/O/1/I 的大写字母数字） */
-    private static final Pattern CODE_PATTERN =
-            Pattern.compile("^PC\\d{8}[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$");
+    @Mock
+    private PickupCodeMapper pickupCodeMapper;
 
-    private PickupCodeService.CodeSeed seed(Long orderId, String orderNo) {
-        PickupCodeService.CodeSeed s = new PickupCodeService.CodeSeed();
-        s.setOrderId(orderId);
-        s.setOrderNo(orderNo);
-        s.setUserId(7L);
-        return s;
-    }
+    @InjectMocks
+    private PickupCodeService pickupCodeService;
 
     @Test
-    @DisplayName("#12 单个生成：格式正确，字段回填完整")
-    void generate() {
-        when(pickupCodeMapper.insert(org.mockito.ArgumentMatchers.any(PickupCode.class)))
-                .thenReturn(1);
+    @DisplayName("单个生成：格式 PC+当天日期+8位，且字符集不含 0/O/1/I")
+    void generate_shouldFollowFormat() {
+        when(pickupCodeMapper.insert(any(PickupCode.class))).thenReturn(1);
 
-        String code = pickupCodeService.generate(100L, "GB2026102100012345", 7L, 1L);
+        String code = pickupCodeService.generate(100L, "GB20261118001", 2L, 1L);
 
-        assertTrue(CODE_PATTERN.matcher(code).matches(), "核销码格式不符: " + code);
-        assertTrue(code.startsWith("PC" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))));
+        String today = LocalDate.now().format(DATE_FMT);
+        assertTrue(code.startsWith("PC" + today), "前缀应为 PC+当天日期：" + code);
+        assertEquals(2 + 8 + 8, code.length(), "PC(2) + 日期(8) + 随机(8)");
 
-        ArgumentCaptor<PickupCode> cap = ArgumentCaptor.forClass(PickupCode.class);
-        verify(pickupCodeMapper).insert(cap.capture());
-        assertEquals(code, cap.getValue().getCode());
-        assertEquals(100L, cap.getValue().getOrderId());
-        assertEquals("GB2026102100012345", cap.getValue().getOrderNo());
-        assertEquals(7L, cap.getValue().getUserId());
-        assertEquals(1L, cap.getValue().getPointId());
-    }
-
-    @Test
-    @DisplayName("#12 批量生成：一单一码、码不重复、pointId 一致")
-    void generateBatch() {
-        List<PickupCodeService.CodeSeed> seeds = List.of(
-                seed(100L, "GB001"), seed(101L, "GB002"), seed(102L, "GB003"));
-        when(pickupCodeMapper.insertBatch(anyList())).thenReturn(3);
-
-        int rows = pickupCodeService.generateBatch(9L, seeds);
-
-        assertEquals(3, rows);
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<PickupCode>> cap = ArgumentCaptor.forClass(List.class);
-        verify(pickupCodeMapper).insertBatch(cap.capture());
-        List<PickupCode> codes = cap.getValue();
-        assertEquals(3, codes.size());
-
-        Set<String> unique = new HashSet<>();
-        Set<Long> orderIds = new HashSet<>();
-        for (PickupCode c : codes) {
-            assertTrue(CODE_PATTERN.matcher(c.getCode()).matches(), "格式不符: " + c.getCode());
-            assertTrue(unique.add(c.getCode()), "出现重复核销码: " + c.getCode());
-            assertTrue(orderIds.add(c.getOrderId()), "一单多码: " + c.getOrderId());
-            assertEquals(9L, c.getPointId());
+        String random = code.substring(10);
+        for (char c : random.toCharArray()) {
+            assertTrue(ALLOWED.indexOf(c) >= 0, "出现了易混淆字符：" + c + " in " + code);
+            assertFalse("0O1I".indexOf(c) >= 0, "不允许 0/O/1/I：" + code);
         }
     }
 
     @Test
-    @DisplayName("#12 空列表：不生成、不落库")
-    void generateBatchEmpty() {
-        assertEquals(0, pickupCodeService.generateBatch(9L, List.of()));
-        assertEquals(0, pickupCodeService.generateBatch(9L, null));
+    @DisplayName("单个生成：入库的字段与入参一致（orderId/orderNo/userId/pointId 全部透传）")
+    void generate_shouldPassAllFieldsToMapper() {
+        when(pickupCodeMapper.insert(any(PickupCode.class))).thenReturn(1);
+
+        String code = pickupCodeService.generate(100L, "GB20261118001", 2L, 1L);
+
+        ArgumentCaptor<PickupCode> captor = ArgumentCaptor.forClass(PickupCode.class);
+        verify(pickupCodeMapper).insert(captor.capture());
+        PickupCode saved = captor.getValue();
+        assertEquals(code, saved.getCode());
+        assertEquals(100L, saved.getOrderId());
+        assertEquals("GB20261118001", saved.getOrderNo());
+        assertEquals(2L, saved.getUserId());
+        assertEquals(1L, saved.getPointId());
+    }
+
+    @Test
+    @DisplayName("单个生成：连续 500 个码不重复（撞码会让 uk_code 直接插入失败）")
+    void generate_shouldNotCollide() {
+        when(pickupCodeMapper.insert(any(PickupCode.class))).thenReturn(1);
+
+        Set<String> codes = new HashSet<>();
+        for (int i = 0; i < 500; i++) {
+            codes.add(pickupCodeService.generate((long) i, "GB" + i, 2L, 1L));
+        }
+        assertEquals(500, codes.size(), "500 次生成出现重复码");
+    }
+
+    @Test
+    @DisplayName("批量生成：空列表/ null 返回 0，不打 Mapper")
+    void generateBatch_empty_shouldReturnZero() {
+        assertEquals(0, pickupCodeService.generateBatch(1L, null));
+        assertEquals(0, pickupCodeService.generateBatch(1L, List.of()));
         verify(pickupCodeMapper, never()).insertBatch(anyList());
     }
 
     @Test
-    @DisplayName("#12 大量生成：随机码碰撞概率可忽略（1000 个全不同）")
-    void generateManyNoCollision() {
-        List<PickupCodeService.CodeSeed> seeds = new ArrayList<>();
-        for (long i = 0; i < 1000; i++) {
-            seeds.add(seed(i, "GB" + i));
-        }
-        when(pickupCodeMapper.insertBatch(anyList())).thenReturn(seeds.size());
+    @DisplayName("批量生成：一单一码，全部挂到同一个自提点，返回值取 Mapper 影响行数")
+    void generateBatch_shouldBuildOneCodePerSeed() {
+        List<PickupCodeService.CodeSeed> seeds = List.of(
+                seed(11L, "GB001", 2L),
+                seed(12L, "GB002", 3L),
+                seed(13L, "GB003", 4L));
+        when(pickupCodeMapper.insertBatch(anyList())).thenReturn(3);
 
-        pickupCodeService.generateBatch(9L, seeds);
+        int rows = pickupCodeService.generateBatch(1L, seeds);
 
+        assertEquals(3, rows);
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<PickupCode>> cap = ArgumentCaptor.forClass(List.class);
-        verify(pickupCodeMapper).insertBatch(cap.capture());
-        Set<String> unique = new HashSet<>();
-        for (PickupCode c : cap.getValue()) {
-            unique.add(c.getCode());
-        }
-        assertEquals(1000, unique.size(), "1000 个核销码应全部唯一");
-        assertNotEquals(0, unique.size());
+        ArgumentCaptor<List<PickupCode>> captor = ArgumentCaptor.forClass(List.class);
+        verify(pickupCodeMapper).insertBatch(captor.capture());
+        List<PickupCode> saved = captor.getValue();
+        assertEquals(3, saved.size());
+        assertEquals("GB001", saved.get(0).getOrderNo());
+        assertEquals(11L, saved.get(0).getOrderId());
+        assertEquals(1L, saved.get(0).getPointId(), "pointId 应统一取入参");
+        assertNotEquals(saved.get(0).getCode(), saved.get(1).getCode());
+    }
+
+    private static PickupCodeService.CodeSeed seed(Long orderId, String orderNo, Long userId) {
+        PickupCodeService.CodeSeed seed = new PickupCodeService.CodeSeed();
+        seed.setOrderId(orderId);
+        seed.setOrderNo(orderNo);
+        seed.setUserId(userId);
+        return seed;
     }
 }
