@@ -26,18 +26,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
- * {@link CacheClient} 序列化回归测试（Issue #28 前置修复）。
+ * {@link CacheClient} 序列化回归 + 缓存三板斧单测（A 负责，#4 考核点 / Issue #28 前置修复）。
  *
- * <p>背景：{@code CacheClient} 原来用裸 {@code new ObjectMapper()}，而缓存落点
- * {@link ActivityVO} 带 {@code LocalDateTime}。Jackson 没注册 {@code JavaTimeModule} 时会抛
- * {@code InvalidDefinitionException}，异常被 {@code writeLogical} 的 catch 吞掉——
- * 表现不是报错，而是<b>缓存静默地永远写不进去</b>，读也读不出来，活动详情等价于没有缓存。</p>
+ * <p><b>序列化回归（远端 develop 合入）：</b> CacheClient 原来用裸 {@code new ObjectMapper()}，
+ * 而缓存落点 {@link ActivityVO} 带 {@code LocalDateTime}。没注册 {@code JavaTimeModule} 时会抛
+ * {@code InvalidDefinitionException}，异常被 {@code writeLogical} 的 catch 吞掉——表现不是报错，
+ * 而是<b>缓存静默地永远写不进去</b>。这组用例用内存 Map 顶掉 Redis，专验"写进去能原样读回来"。</p>
  *
- * <p>这套用例用内存 Map 顶掉 Redis，只验一件事：<b>写进去的东西能原样读回来</b>，
- * 特别是时间字段。哪天有人把 {@code JavaTimeModule} 删了，第一个用例立刻红。</p>
+ * <p><b>三板斧（本地 feature 合入）：</b> 空值缓存防穿透、逻辑过期互斥锁防击穿、TTL 抖动防雪崩。</p>
+ *
+ * <p>纯 Mockito，不连 Redis，CI 可跑。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class CacheClientTest {
@@ -77,6 +81,8 @@ class CacheClientTest {
 
         cacheClient = new CacheClient(redis);
     }
+
+    // ==================== 序列化回归（配合 PR #54） ====================
 
     @Test
     @DisplayName("回源后真的写进了缓存，且 LocalDateTime 能往返（原来的 bug 就死在这）")
@@ -153,7 +159,58 @@ class CacheClientTest {
         assertEquals(START, result.getStartTime(), "拿到的应该是缓存里的旧值");
     }
 
+    // ==================== 防穿透（本地 feature 合入） ====================
+
+    @Test
+    @DisplayName("防穿透：命中 __EMPTY__ 直接返回 null，不回源")
+    void getEmptyHit() {
+        store.put("empty:key", "__EMPTY__");
+        ActivityVO result = cacheClient.get("empty:key", ActivityVO.class, 10, TimeUnit.MINUTES,
+                () -> { throw new AssertionError("命中空值不该回源"); });
+        assertNullValue(result);
+    }
+
+    @Test
+    @DisplayName("防穿透：回源为 null 时缓存 __EMPTY__，TTL 为 2 分钟")
+    void getNullThenCacheEmpty() {
+        ActivityVO result = cacheClient.get("empty:key2", ActivityVO.class, 10, TimeUnit.MINUTES,
+                () -> null);
+        assertNullValue(result);
+        assertEquals("__EMPTY__", store.get("empty:key2"));
+        verify(ops).set("empty:key2", "__EMPTY__", 2, TimeUnit.MINUTES);
+    }
+
+    // ==================== 防雪崩：TTL 抖动（本地 feature 合入） ====================
+
+    @Test
+    @DisplayName("防雪崩：写入 TTL 在 base±10% 范围内抖动，不是固定值")
+    void ttlHasJitter() {
+        long base = 600_000L; // 10 分钟
+
+        // 采样多次，验证既有正抖动也有负抖动（概率上 30 次几乎必然覆盖两侧）
+        for (int i = 0; i < 30; i++) {
+            cacheClient.set("ttl:k" + i, sample(), 10, TimeUnit.MINUTES);
+        }
+        org.mockito.ArgumentCaptor<Long> ttlCap = org.mockito.ArgumentCaptor.forClass(Long.class);
+        verify(ops, times(30)).set(org.mockito.ArgumentMatchers.startsWith("ttl:k"),
+                anyString(), ttlCap.capture(), eq(TimeUnit.MILLISECONDS));
+        boolean sawPlus = false;
+        boolean sawMinus = false;
+        for (long ttl : ttlCap.getAllValues()) {
+            assertTrue(ttl >= base - base * 0.1 && ttl <= base + base * 0.1 + 1,
+                    "TTL 超出 ±10% 抖动范围: " + ttl);
+            if (ttl > base) sawPlus = true;
+            if (ttl < base) sawMinus = true;
+        }
+        assertTrue(sawPlus && sawMinus,
+                "应同时出现正负抖动，实际 sawPlus=" + sawPlus + " sawMinus=" + sawMinus);
+    }
+
     // ==================== 工具 ====================
+
+    private static void assertNullValue(Object o) {
+        org.junit.jupiter.api.Assertions.assertNull(o);
+    }
 
     private Supplier<ActivityVO> counting(AtomicInteger counter) {
         return () -> {
