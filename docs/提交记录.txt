@@ -1,0 +1,56 @@
+4bef166|123qing66|2026-11-23|Merge pull request #55 from 123qing66/feature/test-unittest
+bd344f6|123qing66|2026-11-22|Merge remote-tracking branch 'origin/develop' into feature/test-unittest
+1681014|123qing66|2026-11-22|test(activity): 补充活动域/自提点/绑定/核销码/缓存单测
+f58ae13|123qing66|2026-11-22|Merge pull request #54 from 123qing66/fix/cacheclient-jackson
+5e5b0bd|123qing66|2026-11-22|Merge pull request #53 from 123qing66/feature/excel-export
+86bf6de|bassy|2026-11-21|fix(redis): 缓存 Jackson 注册 JavaTimeModule，修复 LocalDateTime 序列化失败
+7d9a7a0|bassy|2026-11-19|chore(db): 演示数据扩到 320 订单 / 70 退款（导出 ≥300 行）
+cb71d44|bassy|2026-11-19|feat(stats): Excel 导出（#24）
+c67a703|123qing66|2026-11-20|Merge pull request #52 from 123qing66/feature/stats-ranking
+978ee70|bassy|2026-11-19|test(stats): 补 StatisticsService 单测（api.md 接口 13/14/15）
+8c850c6|bassy|2026-11-19|feat(stats): 团长业绩排行（api.md 接口 15）
+294e5e8|bassy|2026-11-19|feat(stats): 退款对账（api.md 接口 14）
+8557de3|bassy|2026-11-19|feat(stats): 成团率统计（api.md 接口 13）
+998cc9f|123qing66|2026-11-19|Merge pull request #47 from 123qing66/feature/demo-data
+b22f42b|123qing66|2026-11-19|Merge pull request #48 from 123qing66/feature/api-docs
+518a03f|123qing66|2026-11-19|Merge pull request #50 from 123qing66/feature/perf-loadtest
+9b39286|123qing66|2026-11-19|Merge pull request #49 from 123qing66/feature/tests
+d391e78|bassy|2026-11-19|perf: 200 并发下单压测脚本与实测报告（#27）
+e5dd44e|bassy|2026-11-18|test: 新增 64 个单测/集成用例 + Jacoco 覆盖率门禁（#26）
+d0a975e|bassy|2026-11-17|docs(api): docs/http 可执行示例（18接口）+ Knife4j 六分组
+c089d89|bassy|2026-11-17|chore(db): 演示数据data.sql（每表≥15条，库存1000）
+96747e7|123qing66|2026-11-17|Merge pull request #42 from 123qing66/feature/order-status
+ee857ab|远山丛韵|2026-11-17|feat(order): 模拟支付回调（验签+幂等+CAS）
+e40b0cd|123qing66|2026-11-17|Merge pull request #46 from 123qing66/feature/activity-module
+ddaf16c|123qing66|2026-11-17|docs(api): 补全 README 与用例权限矩阵并修正 CODEOWNERS
+1d1ca48|123qing66|2026-11-17|合并远端 develop 更新（订单模块等）
+ca93a59|123qing66|2026-11-17|保存本地改动
+8493844|123qing66|2026-11-17|Merge pull request #44 from 123qing66/feature/order-idempotent
+2fcaa60|Charon0304|2026-11-17|feat(order): 重复提交幂等（同用户只生成一单）
+a643b43|Charon0304|2026-11-17|feat(order): 下单接口（时间校验→限购→限流）+ Redis预扣 + DB CAS兜底
+14d234c|远山丛韵|2026-11-17|feat(order): 支付流水Mapper（trade_no唯一索引兜幂等）
+977b010|远山丛韵|2026-11-17|feat(order): 订单Mapper（CAS状态流转兜幂等）
+b9f5559|远山丛韵|2026-11-17|feat(order): 支付流水+退款单实体
+5f7729a|远山丛韵|2026-11-17|feat(order): 订单实体（对应order_info表）
+5a042e2|远山丛韵|2026-11-17|feat(order): 订单状态机
+67575c7|123qing66|2026-10-21|Merge pull request #41 from 123qing66/feature/activity-module
+5e6a6fc|123qing66|2026-10-20|feat(activity): 活动CRUD+状态机+自提点/团长绑定+核销码生成+详情缓存，附设计图与Docker Compose
+c0649c2|123qing66|2026-10-20|Merge pull request #40 from 123qing66/feature/api-contract
+f5e0050|123qing66|2026-10-20|docs(api): 冻结接口契约v1.0（18条接口+错误码），同步生成DTO
+e3acd4f|123qing66|2026-10-20|Merge pull request #39 from 123qing66/feature/db-schema
+c97ca00|123qing66|2026-10-20|feat(db): 全库建表脚本（13张表+索引注释），本地环境指向学校MySQL(3308)
+6e58264|123qing66|2026-10-20|Merge pull request #38 from 123qing66/feature/redis-toolbox
+5361b65|123qing66|2026-10-20|fix(redis): Lua脚本改用@PostConstruct初始化
+a43f36a|123qing66|2026-10-20|feat(cache): Lua原子预扣+令牌桶限流+防穿透防击穿+TTL抖动
+957f7cd|123qing66|2026-10-20|Merge pull request #37 from 123qing66/feature/project-skeleton
+af068d7|123qing66|2026-10-20|feat(common): 工程骨架+统一响应体+全局异常
+9e21f89|123qing66|2026-10-20|Add VS Code extension recommendations
+bd7b4ce|123qing66|2026-10-20|Add VS Code settings for Java and Git configuration
+c40ef11|123qing66|2026-10-20|Add .gitattributes to manage line endings and binaries
+295ddfe|123qing66|2026-10-20|Add .gitignore for build artifacts and local files
+3e530bb|123qing66|2026-10-20|Add contributing guidelines for collaboration
+968645e|123qing66|2026-10-20|Add CI workflow with MySQL and Redis services
+3c746b0|123qing66|2026-10-20|Create ISSUE_TEMPLATE.md for development tasks
+63fee17|123qing66|2026-10-20|Create pull request template in .github directory
+720e9ba|123qing66|2026-10-20|Change CODEOWNERS to new GitHub usernames
+791acc6|123qing66|2026-10-20|Initial commit
